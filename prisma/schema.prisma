@@ -56,8 +56,16 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-enum TxnType   { DEBIT  CREDIT }
-enum TxnSource { EMAIL  CSV  MANUAL }
+enum TxnType {
+  DEBIT
+  CREDIT
+}
+
+enum TxnSource {
+  EMAIL
+  CSV
+  MANUAL
+}
 
 model Transaction {
   id                  String    @id @default(cuid())
