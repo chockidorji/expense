@@ -17,7 +17,11 @@ export async function PATCH(req: NextRequest, ctx: { params: { id: string } }) {
       where: { id: ctx.params.id },
       data: { category: body.category },
     });
-    // Override upsert lands in Step 7; for now just update the row.
+    await forUser(userId).categoryOverride.upsert({
+      where: { merchantNormalized: updated.merchantNormalized },
+      create: { merchantNormalized: updated.merchantNormalized, category: body.category },
+      update: { category: body.category },
+    });
     return NextResponse.json({ id: updated.id, category: updated.category });
   } catch (e) {
     if (e instanceof Response) return e;
