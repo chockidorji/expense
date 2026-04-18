@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireUser } from "@/lib/session";
 import { forUser } from "@/lib/db";
 import { ALL_CATEGORIES } from "@/lib/categorizer";
+import { Prisma } from "@prisma/client";
 
 const PatchSchema = z.object({
   category: z.enum(ALL_CATEGORIES as unknown as [string, ...string[]]),
@@ -21,6 +22,9 @@ export async function PATCH(req: NextRequest, ctx: { params: { id: string } }) {
   } catch (e) {
     if (e instanceof Response) return e;
     if (e instanceof z.ZodError) return NextResponse.json({ error: e.flatten() }, { status: 400 });
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
     throw e;
   }
 }
@@ -32,6 +36,9 @@ export async function DELETE(_req: NextRequest, ctx: { params: { id: string } })
     return NextResponse.json({ ok: true });
   } catch (e) {
     if (e instanceof Response) return e;
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
     throw e;
   }
 }
