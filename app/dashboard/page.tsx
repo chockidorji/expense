@@ -37,6 +37,7 @@ export default async function DashboardPage() {
           <AddTransaction />
           <SyncButton />
           <Link href="/upload"><Button variant="outline">Import CSV</Button></Link>
+          <Link href="/settings/categories"><Button variant="ghost" size="sm">Overrides</Button></Link>
           <SignOutButton />
         </div>
       </header>
