@@ -2,16 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/session";
 import { normalizeMerchant, insertOrLog } from "@/lib/dedup";
-import { categorize } from "@/lib/categorizer";
+import { categorize, ALL_CATEGORIES } from "@/lib/categorizer";
 import { forUser } from "@/lib/db";
 import { TxnSource, TxnType } from "@prisma/client";
+
+const CategoryEnum = z.enum(ALL_CATEGORIES as unknown as [string, ...string[]]);
 
 const CreateSchema = z.object({
   amount: z.number().positive(),
   transactionDate: z.string().datetime(),
   merchant: z.string().min(1).max(200),
   type: z.nativeEnum(TxnType),
-  category: z.string().optional(),
+  category: CategoryEnum.optional(),
   bankAccount: z.string().optional(),
   referenceNumber: z.string().optional(),
 });

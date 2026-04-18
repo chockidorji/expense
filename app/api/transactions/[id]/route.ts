@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/session";
 import { forUser } from "@/lib/db";
+import { ALL_CATEGORIES } from "@/lib/categorizer";
 
-const PatchSchema = z.object({ category: z.string().min(1).max(50) });
+const PatchSchema = z.object({
+  category: z.enum(ALL_CATEGORIES as unknown as [string, ...string[]]),
+});
 
 export async function PATCH(req: NextRequest, ctx: { params: { id: string } }) {
   try {
