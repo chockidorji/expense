@@ -1,0 +1,4 @@
+From: HDFC Bank InstaAlerts <alerts@hdfcbank.bank.in>
+Subject: View: Account update for your HDFC Bank A/c
+
+HDFC BANK --> Dear Customer, Greetings from HDFC Bank! Your payment for Anthropic is registered for E-mandate (Auto payment) using your HDFC Bank Debit Card ending 0161. E-mandate Details: Current transaction amount: USD 121.10 Maximum transaction amount: USD 200.00 Frequency: monthly Start date: 13/02/2026 End date: 13/02/2046 SI Hub ID: YIFuopTNen. Thank you for banking with us. Warm regards, HDFC Bank

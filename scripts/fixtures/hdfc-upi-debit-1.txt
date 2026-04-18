@@ -1,0 +1,4 @@
+From: HDFC Bank InstaAlerts <alerts@hdfcbank.bank.in>
+Subject: ❗  You have done a UPI txn. Check details!
+
+HDFC BANK --> Dear Customer, Rs.5000.00 has been debited from account 1974 to VPA nontaxreceiptsportal.rzp@hdfcbank Non Tax Receipts portal on 06-03-26. Your UPI transaction reference number is 102861515518. If you did not authorize this transaction, please report it immediately by calling 18002586161 Or SMS BLOCK UPI to 7308080808. Warm Regards, HDFC Bank
