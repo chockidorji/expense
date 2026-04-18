@@ -21,7 +21,7 @@ export default function AddTransaction() {
       body: JSON.stringify({
         amount: Number(form.amount),
         merchant: form.merchant,
-        transactionDate: new Date(`${form.date}T12:00:00+05:30`).toISOString(),
+        transactionDate: new Date(`${form.date}T00:00:00+05:30`).toISOString(),
         type: form.type,
       }),
     });
