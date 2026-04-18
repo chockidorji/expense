@@ -7,15 +7,17 @@ const SENDER = [/alerts@hdfcbank\.net/i, /emailstatements\.hdfcbank@hdfcbank\.ne
 // HDFC credit card spend: "Rs 450.00 at SWIGGY on 15-04-2026"
 // Body-only match: anchor on "Rs <amt> at <MERCHANT> on <date>" (no crossing of
 // subject/greeting into unrelated "on HDFC Bank Credit Card" tokens).
-const DEBIT_CC = /Rs\.?\s*([\d,]+(?:\.\d+)?)\s+at\s+([A-Z0-9 .&'/\-]+?)\s+on\s+(\d{2}[-\/]\d{2}[-\/]\d{4})/s;
+// Note: uses [\s\S] in place of . with the s (dotAll) flag — TS default target
+// doesn't enable the s flag, and [\s\S] is behaviorally equivalent.
+const DEBIT_CC = /Rs\.?\s*([\d,]+(?:\.\d+)?)\s+at\s+([A-Z0-9 .&'/\-]+?)\s+on\s+(\d{2}[-\/]\d{2}[-\/]\d{4})/;
 const CARD_LAST4 = /(?:Card|ending)\s+(?:XX)?(\d{4})/i;
 const AUTH_CODE = /(?:Authorization code|Auth(?:\.|orization)? code|Ref(?:erence)? no\.?)\s*:?\s*([A-Z0-9]+)/i;
 
 // HDFC account credit: "Rs.25000.00 has been credited to your HDFC Bank account XXXXXX5678 ... Info: NEFT-..."
-const CREDIT_ACC = /Rs\.?\s*([\d,]+(?:\.\d+)?)\s+has been credited to your HDFC Bank account\s+X+(\d{4}).{0,200}?(?:on\s+(\d{2}[-\/]\d{2}[-\/]\d{4})).{0,200}?Info:\s*([^.]+?)(?:\.|Avl|$)/is;
+const CREDIT_ACC = /Rs\.?\s*([\d,]+(?:\.\d+)?)\s+has been credited to your HDFC Bank account\s+X+(\d{4})[\s\S]{0,200}?(?:on\s+(\d{2}[-\/]\d{2}[-\/]\d{4}))[\s\S]{0,200}?Info:\s*([^.]+?)(?:\.|Avl|$)/i;
 
 // HDFC account debit (UPI or transfer): "Rs.1234.00 has been debited from account XXXXXX5678 to VPA/PAYEE on ..."
-const DEBIT_ACC = /Rs\.?\s*([\d,]+(?:\.\d+)?)\s+has been debited from (?:your\s+)?(?:HDFC Bank\s+)?account\s+X+(\d{4}).{0,200}?(?:to|VPA)\s+([A-Z0-9 .&'/@\-]+?)(?:\s+on\s+(\d{2}[-\/]\d{2}[-\/]\d{4})|\.)/is;
+const DEBIT_ACC = /Rs\.?\s*([\d,]+(?:\.\d+)?)\s+has been debited from (?:your\s+)?(?:HDFC Bank\s+)?account\s+X+(\d{4})[\s\S]{0,200}?(?:to|VPA)\s+([A-Z0-9 .&'/@\-]+?)(?:\s+on\s+(\d{2}[-\/]\d{2}[-\/]\d{4})|\.)/i;
 
 function toIst(ddmmyyyy: string): Date {
   const normalized = ddmmyyyy.replace(/\//g, "-");
