@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import Papa from "papaparse";
 import { z } from "zod";
 import { requireUser } from "@/lib/session";
+import { forUser } from "@/lib/db";
 import { readStashed, deleteStashed } from "@/lib/upload-store";
 import { normalizeMerchant, insertOrLog } from "@/lib/dedup";
-import { categorize } from "@/lib/categorizer";
+import { categorizeByKeywords } from "@/lib/categorizer";
 import { TxnSource, TxnType } from "@prisma/client";
 import { parse as parseDate, isValid } from "date-fns";
 import { fromZonedTime } from "date-fns-tz";
@@ -55,6 +56,9 @@ export async function POST(req: NextRequest) {
     const errors: { row: number; reason: string }[] = [];
     let inserted = 0, duplicates = 0;
 
+    const overrideRows = await forUser(userId).categoryOverride.findMany({});
+    const overrideMap = new Map(overrideRows.map(o => [o.merchantNormalized, o.category]));
+
     for (let i = 0; i < parsed.data.length; i++) {
       const row = parsed.data[i];
       const rawAmount = row[body.mapping.amount];
@@ -68,7 +72,7 @@ export async function POST(req: NextRequest) {
       }
       const type = parseType(body.mapping.type ? row[body.mapping.type] : undefined, body.defaultType);
       const merchantNormalized = normalizeMerchant(rawMerchant);
-      const category = await categorize(userId, merchantNormalized);
+      const category = overrideMap.get(merchantNormalized) ?? categorizeByKeywords(merchantNormalized);
       const out = await insertOrLog(userId, {
         amount,
         transactionDate: txDate,
