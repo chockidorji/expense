@@ -23,8 +23,14 @@ export function forUser(userId: string) {
       create: (data: Omit<Prisma.TransactionUncheckedCreateInput, "userId">) =>
         prisma.transaction.create({ data: { ...data, userId } }),
       update: (args: { where: { id: string }; data: Prisma.TransactionUpdateInput }) =>
+        // `as any`: relies on Prisma's extended WhereUniqueInput — id is PK, userId
+        // narrows to WHERE id = ? AND userId = ?. Load-bearing for row-level scoping;
+        // do not remove without replacing with a findFirst+updateById pattern.
         prisma.transaction.update({ where: { id: args.where.id, userId } as any, data: args.data }),
       delete: (args: { where: { id: string } }) =>
+        // `as any`: relies on Prisma's extended WhereUniqueInput — id is PK, userId
+        // narrows to WHERE id = ? AND userId = ?. Load-bearing for row-level scoping;
+        // do not remove without replacing with a findFirst+updateById pattern.
         prisma.transaction.delete({ where: { id: args.where.id, userId } as any }),
       groupBy: (args: Prisma.TransactionGroupByArgs) =>
         prisma.transaction.groupBy({ ...args, where: { ...(args.where ?? {}), userId } } as any),
