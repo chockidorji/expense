@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   Default: "Sign-in failed. Try again.",
 };
 
-export default function SignInPage() {
+function ErrorToast() {
   const params = useSearchParams();
   const error = params.get("error");
 
@@ -24,8 +24,15 @@ export default function SignInPage() {
     if (error) toast.error(ERROR_MESSAGES[error] ?? ERROR_MESSAGES.Default);
   }, [error]);
 
+  return null;
+}
+
+export default function SignInPage() {
   return (
     <main className="min-h-screen grid place-items-center p-6">
+      <Suspense fallback={null}>
+        <ErrorToast />
+      </Suspense>
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Expense Tracker</CardTitle>
