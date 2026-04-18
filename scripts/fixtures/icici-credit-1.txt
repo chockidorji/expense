@@ -1,0 +1,4 @@
+From: alerts@icicibank.com
+Subject: Credit Alert
+
+Your a/c XX1234 credited with INR 15,000.00 on 01-04-2026. Info: NEFT-JOHN DOE.

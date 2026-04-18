@@ -1,0 +1,4 @@
+From: alerts@icicibank.com
+Subject: UPI Transaction Alert
+
+Your a/c XX1234 debited with INR 500.00 on 15-04-2026. UPI ref 123456. Info: amazon@icici.

@@ -1,0 +1,4 @@
+From: credit_cards@icicibank.com
+Subject: Transaction alert on your ICICI Bank Credit Card
+
+Dear Customer, Your ICICI Bank Credit Card XX1234 has been used for a transaction of INR 450.00 on Apr 15, 2026 at MAKEMYTRIP. If you did not authorize, please call 1860-120-7777.
