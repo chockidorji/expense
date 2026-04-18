@@ -44,6 +44,7 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async session({ session, user }) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (session.user) (session.user as any).id = user.id;
       return session;
     },
