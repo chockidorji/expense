@@ -1,6 +1,8 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { getMonthKpis, getCategoryBreakdown, getDailyTrend } from "@/lib/dashboard";
 import KpiCards from "./kpi-cards";
 import CategoryPie from "./category-pie";
@@ -27,6 +29,7 @@ export default async function DashboardPage() {
         </div>
         <div className="flex gap-2">
           <AddTransaction />
+          <Link href="/upload"><Button variant="outline">Import CSV</Button></Link>
           <SignOutButton />
         </div>
       </header>
