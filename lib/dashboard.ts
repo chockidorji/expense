@@ -20,7 +20,7 @@ export async function getMonthKpis(userId: string) {
   const total = debits.reduce((sum, r) => sum + Number(r.amount), 0);
   const byCat = new Map<string, number>();
   for (const r of debits) byCat.set(r.category, (byCat.get(r.category) ?? 0) + Number(r.amount));
-  const topCat = [...byCat.entries()].sort((a, b) => b[1] - a[1])[0];
+  const topCat = Array.from(byCat.entries()).sort((a, b) => b[1] - a[1])[0];
   return {
     totalSpend: total,
     topCategory: topCat?.[0] ?? null,
@@ -58,5 +58,5 @@ export async function getDailyTrend(userId: string, days = 30) {
     const key = toZonedTime(r.transactionDate, TZ).toISOString().slice(0, 10);
     buckets.set(key, (buckets.get(key) ?? 0) + Number(r.amount));
   }
-  return [...buckets.entries()].map(([date, amount]) => ({ date, amount }));
+  return Array.from(buckets.entries()).map(([date, amount]) => ({ date, amount }));
 }
