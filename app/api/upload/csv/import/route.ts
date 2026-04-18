@@ -30,8 +30,11 @@ function parseAmount(raw: string): number | null {
 }
 function parseCsvDate(raw: string): Date | null {
   for (const fmt of DATE_FORMATS) {
-    const d = parseDate(raw.trim(), fmt, new Date());
-    if (isValid(d)) return fromZonedTime(d, "Asia/Kolkata");
+    const d = parseDate(raw.trim(), fmt, new Date(2000, 0, 1));
+    if (isValid(d)) {
+      d.setHours(0, 0, 0, 0);
+      return fromZonedTime(d, "Asia/Kolkata");
+    }
   }
   return null;
 }
