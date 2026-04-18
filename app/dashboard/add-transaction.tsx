@@ -32,6 +32,7 @@ export default function AddTransaction() {
     else toast.success("Transaction added");
     setOpen(false);
     setForm({ amount: "", merchant: "", date: new Date().toISOString().slice(0, 10), type: "DEBIT" });
+    window.dispatchEvent(new CustomEvent("expense-tracker:transaction-added"));
     router.refresh();
   }
 

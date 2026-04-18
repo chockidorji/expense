@@ -38,6 +38,13 @@ export default function TransactionTable() {
 
   useEffect(() => { load(true); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [JSON.stringify(filters)]);
 
+  useEffect(() => {
+    const handler = () => load(true);
+    window.addEventListener("expense-tracker:transaction-added", handler);
+    return () => window.removeEventListener("expense-tracker:transaction-added", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function updateCategory(id: string, category: string) {
     const r = await fetch(`/api/transactions/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category }) });
     if (!r.ok) { toast.error("Failed to update category"); return; }
