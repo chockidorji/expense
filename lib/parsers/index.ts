@@ -13,11 +13,11 @@ export function detectBankAndParse(input: { subject: string; plainText: string; 
   return null;
 }
 
-export function allBankSenderQuery(): string {
+export function allBankSenderQuery(newerThanDays = 1): string {
   const senders: Record<string, string[]> = {
     HDFC: ["alerts@hdfcbank.bank.in", "alerts@hdfcbank.net", "emailstatements.hdfcbank@hdfcbank.net"],
     // SBI/ICICI/Axis/Kotak added in Step 6
   };
   const all = Object.values(senders).flat();
-  return `from:(${all.join(" OR ")}) newer_than:1d`;
+  return `from:(${all.join(" OR ")}) newer_than:${newerThanDays}d`;
 }

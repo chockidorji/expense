@@ -15,7 +15,7 @@ export type SyncResult = {
   errors: string[];
 };
 
-export async function syncUserGmail(userId: string): Promise<SyncResult> {
+export async function syncUserGmail(userId: string, newerThanDays = 1): Promise<SyncResult> {
   const result: SyncResult = { userId, fetched: 0, parsed: 0, inserted: 0, duplicates: 0, unrecognized: 0, errors: [] };
   let gmail;
   try {
@@ -28,7 +28,7 @@ export async function syncUserGmail(userId: string): Promise<SyncResult> {
 
   let list;
   try {
-    list = await gmail.users.messages.list({ userId: "me", q: allBankSenderQuery(), maxResults: 100 });
+    list = await gmail.users.messages.list({ userId: "me", q: allBankSenderQuery(newerThanDays), maxResults: 100 });
   } catch (e: any) {
     if (e?.response?.data?.error === "invalid_grant" || e?.code === 401) {
       const account = await prisma.account.findFirst({ where: { userId, provider: "google" } });
