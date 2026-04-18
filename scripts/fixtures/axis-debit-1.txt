@@ -1,0 +1,4 @@
+From: alerts@axisbank.com
+Subject: Transaction Alert
+
+Dear Customer, INR 2,500.00 debited from A/c no. XX1234 on 10-04-26. Info: UPI/AMAZONPAY/RZPAMAZON.

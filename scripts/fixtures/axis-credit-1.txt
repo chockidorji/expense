@@ -1,0 +1,4 @@
+From: alerts@axisbank.com
+Subject: Credit Alert
+
+Dear Customer, INR 50,000 credited to A/c no. XX1234 on 01-04-26. Info: NEFT/ACMECORP/SALARY.

@@ -1,0 +1,4 @@
+From: cc.alerts@axisbank.com
+Subject: Credit Card Transaction Alert
+
+Txn of INR 1,200 on Axis Credit Card XX1234 at FLIPKART on 12-04-26. Avl Lmt INR 50,000.
