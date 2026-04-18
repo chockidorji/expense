@@ -10,11 +10,17 @@ import TrendLine from "./trend-line";
 import TransactionTable from "./transaction-table";
 import AddTransaction from "./add-transaction";
 import SignOutButton from "./sign-out";
+import SyncButton from "./sync-button";
+import { prisma } from "@/lib/db";
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/auth/signin");
   const userId = (session.user as any).id;
+  const account = await prisma.account.findFirst({
+    where: { userId, provider: "google" },
+    select: { needsReauth: true },
+  });
   const [kpis, pie, trend] = await Promise.all([
     getMonthKpis(userId),
     getCategoryBreakdown(userId),
@@ -29,10 +35,16 @@ export default async function DashboardPage() {
         </div>
         <div className="flex gap-2">
           <AddTransaction />
+          <SyncButton />
           <Link href="/upload"><Button variant="outline">Import CSV</Button></Link>
           <SignOutButton />
         </div>
       </header>
+      {account?.needsReauth && (
+        <div className="rounded-md border border-yellow-500/40 bg-yellow-500/10 p-3 text-sm">
+          Gmail access expired. <a className="underline" href="/api/auth/signin/google">Reconnect</a>.
+        </div>
+      )}
       <KpiCards data={kpis} />
       <div className="grid gap-6 lg:grid-cols-2">
         <CategoryPie data={pie} />
