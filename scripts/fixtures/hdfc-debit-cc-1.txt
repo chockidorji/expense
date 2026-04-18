@@ -1,0 +1,9 @@
+From: alerts@hdfcbank.net
+Subject: You've spent Rs. 450.00 on HDFC Bank Credit Card XX1234
+
+Dear Customer,
+
+Thank you for using your HDFC Bank Credit Card ending 1234 for Rs 450.00 at SWIGGY on 15-04-2026 19:32:45.
+Authorization code: 012345
+
+If you did not make this transaction, please call us immediately.

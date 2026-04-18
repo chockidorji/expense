@@ -4,8 +4,10 @@ import { fromZonedTime } from "date-fns-tz";
 
 const SENDER = [/alerts@hdfcbank\.net/i, /emailstatements\.hdfcbank@hdfcbank\.net/i];
 
-// HDFC credit card spend: "spent Rs 450.00 at SWIGGY on 15-04-2026"
-const DEBIT_CC = /(?:spent|used).{0,30}?Rs\.?\s*([\d,]+(?:\.\d+)?)\s*(?:on|at)\s+(?:HDFC.*?Credit Card.*?)?(?:at\s+)?([A-Z0-9 .&'/\-]+?)\s+on\s+(\d{2}[-\/]\d{2}[-\/]\d{4})/is;
+// HDFC credit card spend: "Rs 450.00 at SWIGGY on 15-04-2026"
+// Body-only match: anchor on "Rs <amt> at <MERCHANT> on <date>" (no crossing of
+// subject/greeting into unrelated "on HDFC Bank Credit Card" tokens).
+const DEBIT_CC = /Rs\.?\s*([\d,]+(?:\.\d+)?)\s+at\s+([A-Z0-9 .&'/\-]+?)\s+on\s+(\d{2}[-\/]\d{2}[-\/]\d{4})/s;
 const CARD_LAST4 = /(?:Card|ending)\s+(?:XX)?(\d{4})/i;
 const AUTH_CODE = /(?:Authorization code|Auth(?:\.|orization)? code|Ref(?:erence)? no\.?)\s*:?\s*([A-Z0-9]+)/i;
 
