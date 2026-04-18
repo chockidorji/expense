@@ -1,0 +1,4 @@
+From: creditcardalerts@kotak.com
+Subject: Credit Card Transaction Alert
+
+Your Kotak CC ending 1234 was used for Rs. 1,500 at FOODPANDA on 15-04-26.

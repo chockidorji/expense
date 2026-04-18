@@ -1,0 +1,4 @@
+From: kmbl.alerts@kotak.com
+Subject: Transaction Alert
+
+Sent Rs.800 from Kotak Bank A/c XX1234 to SWIGGY on 10-04-26. UPI Ref 123456789. Not you? Call 18602662666.
