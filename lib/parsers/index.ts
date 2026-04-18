@@ -1,7 +1,8 @@
 import type { BankParser, ParsedTransaction } from "./types";
 import { hdfcParser } from "./hdfc";
+import { sbiParser } from "./sbi";
 
-export const PARSERS: BankParser[] = [hdfcParser /* more added in step 6 */];
+export const PARSERS: BankParser[] = [hdfcParser, sbiParser /* more added in step 6 */];
 
 export function detectBankAndParse(input: { subject: string; plainText: string; htmlText: string; fromHeader: string }): ParsedTransaction | null {
   for (const p of PARSERS) {
@@ -16,7 +17,8 @@ export function detectBankAndParse(input: { subject: string; plainText: string; 
 export function allBankSenderQuery(newerThanDays = 1): string {
   const senders: Record<string, string[]> = {
     HDFC: ["alerts@hdfcbank.bank.in", "alerts@hdfcbank.net", "emailstatements.hdfcbank@hdfcbank.net"],
-    // SBI/ICICI/Axis/Kotak added in Step 6
+    SBI: ["onlinesbi@sbi.co.in", "donotreply.sbiatm@alerts.sbi.co.in", "creditcards@sbicard.com"],
+    // ICICI/Axis/Kotak added in Step 6
   };
   const all = Object.values(senders).flat();
   return `from:(${all.join(" OR ")}) newer_than:${newerThanDays}d`;

@@ -1,0 +1,4 @@
+From: SBI InstaAlerts <onlinesbi@sbi.co.in>
+Subject: Credit Alert
+
+Dear Customer, your A/c XX1234 has been credited with Rs. 25,000.00 on 01/04/2026 by NEFT from ACME CORP.

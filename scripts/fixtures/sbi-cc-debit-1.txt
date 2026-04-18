@@ -1,0 +1,4 @@
+From: alerts@sbicard.com
+Subject: Transaction Alert on SBI Credit Card
+
+Rs.1,250.00 was spent on your SBI Credit Card ending 1234 at AMAZON INDIA on 10/04/2026. Available limit: Rs. 48,750.00.

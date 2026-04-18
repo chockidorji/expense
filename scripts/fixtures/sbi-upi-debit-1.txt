@@ -1,0 +1,4 @@
+From: SBI Alerts <donotreply.sbiatm@alerts.sbi.co.in>
+Subject: Transaction Alert
+
+Dear SBI UPI User, ur A/C XXXXX1234 debited by Rs.500.00 on 15Apr24 trf to SWIGGY Refno 123456789. If not done forward this SMS to 9223008333 or call 1800111109.
