@@ -1,6 +1,6 @@
 import { forUser, prisma } from "./db";
 import { TxnType } from "@prisma/client";
-import { startOfMonth, endOfMonth, startOfDay } from "date-fns";
+import { startOfMonth, endOfMonth } from "date-fns";
 import { toZonedTime, fromZonedTime } from "date-fns-tz";
 
 const TZ = "Asia/Kolkata";
@@ -61,10 +61,20 @@ export async function getCategoryBreakdown(userId: string, anchor?: Date) {
     .sort((a: any, b: any) => b.amount - a.amount);
 }
 
+/** Format a UTC Date as its IST calendar day, "YYYY-MM-DD". */
+function istDayKey(d: Date): string {
+  const z = toZonedTime(d, TZ);
+  // toZonedTime returns a Date whose UTC getters read the IST wall-clock.
+  const y = z.getUTCFullYear();
+  const m = String(z.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(z.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 /**
  * Daily debit trend scoped to the anchor month (1st → last day). If anchor is
- * the current month, it ends at today — future days aren't rendered.
- * The chart's x-axis length therefore matches the month's length (28/30/31).
+ * the current month, it ends at today — future days aren't rendered. The
+ * chart's x-axis length therefore matches the month's length (28/30/31).
  */
 export async function getDailyTrend(userId: string, _unused?: number, anchor?: Date) {
   void _unused; // preserved in the signature for backwards compatibility
@@ -79,18 +89,21 @@ export async function getDailyTrend(userId: string, _unused?: number, anchor?: D
   });
 
   const buckets = new Map<string, number>();
-  // Pre-seed one bucket per IST day from the 1st through `end` inclusive.
-  const istStart = toZonedTime(from, TZ);
-  const istEnd = toZonedTime(end, TZ);
-  for (
-    let d = startOfDay(istStart);
-    d.getTime() <= startOfDay(istEnd).getTime();
-    d = new Date(d.getTime() + 24 * 60 * 60 * 1000)
-  ) {
-    buckets.set(d.toISOString().slice(0, 10), 0);
+  // Derive the month's IST year/month from `from`, then generate keys 1..lastDay.
+  const fromIst = toZonedTime(from, TZ);
+  const year = fromIst.getUTCFullYear();
+  const monthIdx = fromIst.getUTCMonth();
+  const endIst = toZonedTime(end, TZ);
+  const endDay = endIst.getUTCMonth() === monthIdx && endIst.getUTCFullYear() === year
+    ? endIst.getUTCDate()
+    : new Date(Date.UTC(year, monthIdx + 1, 0)).getUTCDate(); // last day of the month
+  for (let day = 1; day <= endDay; day++) {
+    const key = `${year}-${String(monthIdx + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    buckets.set(key, 0);
   }
+
   for (const r of rows) {
-    const key = toZonedTime(r.transactionDate, TZ).toISOString().slice(0, 10);
+    const key = istDayKey(r.transactionDate);
     if (buckets.has(key)) buckets.set(key, (buckets.get(key) ?? 0) + Number(r.amount));
   }
   return Array.from(buckets.entries()).map(([date, amount]) => ({ date, amount }));
