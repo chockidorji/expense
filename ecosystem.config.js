@@ -16,10 +16,10 @@ module.exports = {
     {
       name: "expense-tracker-web",
       script: "node_modules/next/dist/bin/next",
-      args: "start -p 3000",
+      args: "start",
       instances: 1,
       exec_mode: "fork",
-      env: { NODE_ENV: "production" },
+      env: { NODE_ENV: "production", PORT: "3006" },
       max_memory_restart: "512M",
       error_file: "/var/log/expense-tracker/web.err.log",
       out_file: "/var/log/expense-tracker/web.out.log",
