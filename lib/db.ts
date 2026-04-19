@@ -53,5 +53,19 @@ export function forUser(userId: string) {
       create: (data: Omit<Prisma.DedupLogUncheckedCreateInput, "userId">) =>
         prisma.dedupLog.create({ data: { ...data, userId } }),
     },
+    budget: {
+      findMany: (args?: Omit<Prisma.BudgetFindManyArgs, "where"> & { where?: Prisma.BudgetWhereInput }) =>
+        prisma.budget.findMany({ ...args, where: { ...(args?.where ?? {}), userId } }),
+      upsert: (args: { where: { category: string }; create: Omit<Prisma.BudgetUncheckedCreateInput, "userId">; update: Prisma.BudgetUpdateInput }) =>
+        prisma.budget.upsert({
+          where: { userId_category: { userId, category: args.where.category } },
+          create: { ...args.create, userId },
+          update: args.update,
+        }),
+      delete: (args: { where: { category: string } }) =>
+        prisma.budget.delete({
+          where: { userId_category: { userId, category: args.where.category } },
+        }),
+    },
   };
 }

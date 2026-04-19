@@ -8,12 +8,14 @@ import {
   getCategoryBreakdown,
   getDailyTrend,
   getMonthsWithActivity,
+  getBudgetProgress,
   parseMonthParam,
 } from "@/lib/dashboard";
 import KpiCards from "./kpi-cards";
 import CategoryPie from "./category-pie";
 import TrendLine from "./trend-line";
 import TransactionTable from "./transaction-table";
+import BudgetProgress from "./budget-progress";
 import AddTransaction from "./add-transaction";
 import SignOutButton from "./sign-out";
 import SyncButton from "./sync-button";
@@ -54,12 +56,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
   }
   const monthBounds = monthBoundStrings(selectedValue);
 
-  const [kpis, currentKpis, pie, trend, monthsWithActivity] = await Promise.all([
+  const [kpis, currentKpis, pie, trend, monthsWithActivity, budgetRows] = await Promise.all([
     getMonthKpis(userId, selectedAnchor),
     getMonthKpis(userId),                 // no anchor = current IST month
     getCategoryBreakdown(userId, selectedAnchor),
     getDailyTrend(userId, undefined, selectedAnchor),
     getMonthsWithActivity(userId),
+    getBudgetProgress(userId, selectedAnchor),
   ]);
 
   // Build the selector options: current month always at top, then months with
@@ -85,6 +88,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
           <AddTransaction />
           <SyncButton />
           <Link href="/upload"><Button variant="outline">Import statement</Button></Link>
+          <Link href="/settings/budgets"><Button variant="ghost" size="sm">Budgets</Button></Link>
           <Link href="/settings/categories"><Button variant="ghost" size="sm">Overrides</Button></Link>
           <SignOutButton />
         </div>
@@ -102,6 +106,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
         <CategoryPie data={pie} monthLabel={kpis.monthLabel} />
         <TrendLine data={trend} monthLabel={kpis.monthLabel} />
       </div>
+      <BudgetProgress rows={budgetRows} monthLabel={kpis.monthLabel} />
       <TransactionTable
         initialFrom={monthBounds.from}
         initialTo={monthBounds.to}
