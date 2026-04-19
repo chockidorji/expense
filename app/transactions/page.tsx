@@ -22,7 +22,11 @@ function monthBoundStrings(monthKey: string): { from: string; to: string } {
   return { from: first, to: last };
 }
 
-export default async function TransactionsPage({ searchParams }: { searchParams: { month?: string } }) {
+export default async function TransactionsPage({
+  searchParams,
+}: {
+  searchParams: { month?: string; category?: string };
+}) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/auth/signin");
 
@@ -34,7 +38,11 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
       <MobileHeader title="Transactions" showSync rightHref="/settings" />
       <main className="mx-auto max-w-5xl px-4 md:p-6 pt-4 md:pt-6 pb-6 space-y-4">
         <h1 className="hidden md:block text-2xl font-semibold">Transactions</h1>
-        <TransactionsList initialFrom={bounds.from} initialTo={bounds.to} />
+        <TransactionsList
+          initialFrom={bounds.from}
+          initialTo={bounds.to}
+          initialCategory={searchParams.category}
+        />
       </main>
       <AddTransactionFab />
     </>

@@ -17,6 +17,7 @@ import TrendLine from "./trend-line";
 import TransactionTable from "./transaction-table";
 import BudgetProgress from "./budget-progress";
 import BudgetStrip from "./budget-strip";
+import CategoryList from "./category-list";
 import ChartCarousel from "./chart-carousel";
 import RecentTxns from "./recent-txns";
 import AddTransaction, { AddTransactionFab } from "./add-transaction";
@@ -56,6 +57,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
     return { from: first, to: last };
   }
   const monthBounds = monthBoundStrings(selectedValue);
+  // ISO bounds for the category breakdown API (IST-aware).
+  const fromISO = new Date(monthBounds.from + "T00:00:00+05:30").toISOString();
+  const toISO = new Date(monthBounds.to + "T23:59:59+05:30").toISOString();
 
   const [kpis, currentKpis, pie, trend, monthsWithActivity, budgetRows] = await Promise.all([
     getMonthKpis(userId, selectedAnchor),
@@ -119,8 +123,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
         <KpiCards selected={kpis} current={currentKpis} />
 
         {/* Mobile stack */}
-        <BudgetStrip rows={budgetRows} />
+        <BudgetStrip rows={budgetRows} monthLabel={kpis.monthLabel} fromISO={fromISO} toISO={toISO} monthKey={selectedValue} />
         <ChartCarousel trend={trend} pie={pie} monthLabel={kpis.monthLabel} />
+        <div className="md:hidden">
+          <CategoryList data={pie} monthLabel={kpis.monthLabel} fromISO={fromISO} toISO={toISO} monthKey={selectedValue} />
+        </div>
         <RecentTxns from={monthBounds.from} to={monthBounds.to} />
 
         {/* Desktop charts + budget + table */}
@@ -129,7 +136,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
           <TrendLine data={trend} monthLabel={kpis.monthLabel} />
         </div>
         <div className="hidden md:block">
-          <BudgetProgress rows={budgetRows} monthLabel={kpis.monthLabel} />
+          <CategoryList data={pie} monthLabel={kpis.monthLabel} fromISO={fromISO} toISO={toISO} monthKey={selectedValue} title="All categories" />
+        </div>
+        <div className="hidden md:block">
+          <BudgetProgress rows={budgetRows} monthLabel={kpis.monthLabel} fromISO={fromISO} toISO={toISO} monthKey={selectedValue} />
         </div>
         <div className="hidden md:block">
           <TransactionTable initialFrom={monthBounds.from} initialTo={monthBounds.to} monthLabel={kpis.monthLabel} />

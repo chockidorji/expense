@@ -35,14 +35,16 @@ function dayGroupLabel(key: string): string {
 export default function TransactionsList({
   initialFrom,
   initialTo,
+  initialCategory,
 }: {
   initialFrom?: string;
   initialTo?: string;
+  initialCategory?: string;
 }) {
   const [rows, setRows] = useState<TxnRow[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [filters, setFilters] = useState<Filters>({ from: initialFrom, to: initialTo });
+  const [filters, setFilters] = useState<Filters>({ from: initialFrom, to: initialTo, category: initialCategory });
   const [sheetOpen, setSheetOpen] = useState(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
