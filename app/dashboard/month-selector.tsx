@@ -24,9 +24,9 @@ export default function MonthSelector({ options, defaultValue, currentValue }: {
     <div className="flex items-center gap-2">
       <Label htmlFor="month-selector" className="text-sm text-muted-foreground">Viewing</Label>
       <Select value={currentValue} onValueChange={onChange}>
-        <SelectTrigger id="month-selector" className="w-48"><SelectValue /></SelectTrigger>
+        <SelectTrigger id="month-selector" className="w-56"><SelectValue /></SelectTrigger>
         <SelectContent>
-          {options.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+          {options.map(o => <SelectItem key={o.value} value={o.value} label={o.label}>{o.label}</SelectItem>)}
         </SelectContent>
       </Select>
     </div>
