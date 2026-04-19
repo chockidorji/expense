@@ -29,7 +29,10 @@ const BodySchema = z.object({
   defaultType: z.enum(["DEBIT", "CREDIT"]).default("DEBIT"),
 });
 
-const DATE_FORMATS = ["dd/MM/yyyy", "dd-MM-yyyy", "yyyy-MM-dd", "MM/dd/yyyy", "dd MMM yyyy", "dd/MM/yy", "dd-MM-yy"];
+// 2-digit year formats FIRST — date-fns will happily match "01/12/25" against
+// "dd/MM/yyyy" and read 25 as year 25 (not 2025). Putting "dd/MM/yy" earlier
+// pins the 2-digit-year interpretation (which date-fns pivots around 2000).
+const DATE_FORMATS = ["dd/MM/yy", "dd-MM-yy", "dd/MM/yyyy", "dd-MM-yyyy", "yyyy-MM-dd", "MM/dd/yyyy", "dd MMM yyyy"];
 
 function parseAmount(raw: string | undefined | null): number | null {
   if (!raw) return null;
