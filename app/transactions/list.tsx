@@ -12,6 +12,7 @@ import { SlidersHorizontal } from "lucide-react";
 import FilterSheet, { type Filters } from "./filter-sheet";
 import TxnRowCard, { type TxnRow } from "./txn-row";
 import { toast } from "sonner";
+import { displayMerchant } from "@/lib/merchant-display";
 
 const fmt = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 
@@ -304,7 +305,7 @@ export default function TransactionsList({
                   {rows.map((r) => (
                     <TableRow key={r.id}>
                       <TableCell>{new Date(r.transactionDate).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</TableCell>
-                      <TableCell>{r.merchant}</TableCell>
+                      <TableCell title={r.merchant}>{displayMerchant(r.merchant)}</TableCell>
                       <TableCell className={`text-right tabular-nums ${r.type === "DEBIT" ? "" : "text-green-600"}`}>
                         {r.type === "DEBIT" ? "-" : "+"}
                         {fmt.format(Number(r.amount))}

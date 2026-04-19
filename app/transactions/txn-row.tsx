@@ -2,6 +2,7 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ALL_CATEGORIES } from "@/lib/categorizer";
 import { cn } from "@/lib/utils";
+import { displayMerchant } from "@/lib/merchant-display";
 
 export type TxnRow = {
   id: string;
@@ -26,7 +27,7 @@ export default function TxnRowCard({
     <li className="flex items-start gap-3 px-4 py-3">
       <div className="min-w-0 flex-1 space-y-1">
         <div className="text-sm font-medium truncate" title={row.merchant}>
-          {row.merchant}
+          {displayMerchant(row.merchant)}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Select value={row.category} onValueChange={(v: any) => v && onCategoryChange(row.id, v)}>

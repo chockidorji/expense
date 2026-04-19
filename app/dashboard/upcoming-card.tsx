@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { RefreshCw, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { displayMerchant } from "@/lib/merchant-display";
 
 const fmt = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 const dayFmt = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
@@ -131,7 +132,7 @@ export default function UpcomingCard() {
               <li key={r.id} className="flex items-center gap-3 px-4 py-3">
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium truncate" title={r.merchant}>
-                    {r.merchant}
+                    {displayMerchant(r.merchant)}
                   </div>
                   <div className="text-[11px] text-muted-foreground flex items-center gap-1.5 flex-wrap">
                     {r.category && <span className="capitalize">{r.category}</span>}

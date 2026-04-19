@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Check, X, Clock } from "lucide-react";
+import { displayMerchant } from "@/lib/merchant-display";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -178,7 +179,7 @@ export default function UpcomingList() {
                       <li key={r.id} className="px-4 py-3 flex items-start gap-3">
                         <div className="min-w-0 flex-1">
                           <div className="text-sm font-medium truncate" title={r.merchant}>
-                            {r.merchant}
+                            {displayMerchant(r.merchant)}
                           </div>
                           <div className="text-[11px] text-muted-foreground flex items-center gap-1.5 flex-wrap">
                             {r.category && (

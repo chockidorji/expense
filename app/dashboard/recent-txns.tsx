@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { displayMerchant } from "@/lib/merchant-display";
 
 type Row = {
   id: string;
@@ -56,7 +57,7 @@ export default function RecentTxns({ from, to }: { from?: string; to?: string })
             {rows.map((r) => (
               <li key={r.id} className="flex items-center gap-3 px-4 py-3">
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium truncate">{r.merchant}</div>
+                  <div className="text-sm font-medium truncate" title={r.merchant}>{displayMerchant(r.merchant)}</div>
                   <div className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
                     <span className="capitalize inline-flex px-1.5 py-0.5 rounded-md bg-muted text-[10px]">{r.category}</span>
                     <span>·</span>

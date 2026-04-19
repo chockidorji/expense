@@ -4,6 +4,7 @@ import Link from "next/link";
 import { BottomSheet, BottomSheetContent } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { displayMerchant } from "@/lib/merchant-display";
 
 const fmt = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 const dayFmt = new Intl.DateTimeFormat("en-IN", {
@@ -108,7 +109,7 @@ export default function CategoryBreakdownSheet({
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-medium truncate" title={r.merchant}>
-                        {r.merchant}
+                        {displayMerchant(r.merchant)}
                       </div>
                       <div className="text-[11px] text-muted-foreground">
                         {r.count === 1 && r.firstDate ? (

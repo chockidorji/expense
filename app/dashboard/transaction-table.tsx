@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ALL_CATEGORIES } from "@/lib/categorizer";
 import { toast } from "sonner";
+import { displayMerchant } from "@/lib/merchant-display";
 
 type Row = {
   id: string;
@@ -141,7 +142,7 @@ export default function TransactionTable({
               {rows.map(r => (
                 <TableRow key={r.id}>
                   <TableCell>{new Date(r.transactionDate).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</TableCell>
-                  <TableCell>{r.merchant}</TableCell>
+                  <TableCell title={r.merchant}>{displayMerchant(r.merchant)}</TableCell>
                   <TableCell className={`text-right tabular-nums ${r.type === "DEBIT" ? "" : "text-green-600"}`}>
                     {r.type === "DEBIT" ? "-" : "+"}{fmt.format(Number(r.amount))}
                   </TableCell>

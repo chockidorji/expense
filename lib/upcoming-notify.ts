@@ -1,6 +1,7 @@
 import { prisma } from "./db";
 import { UpcomingStatus } from "@prisma/client";
 import { sendTelegramMessage, mdv2Escape, isTelegramConfigured } from "./telegram";
+import { displayMerchant } from "./merchant-display";
 
 const fmt = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 const dayFmt = new Intl.DateTimeFormat("en-IN", { weekday: "short", day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
@@ -41,7 +42,7 @@ export async function buildDigestForUser(userId: string, horizonDays = 7): Promi
   for (const r of rows) {
     const d = daysUntil(r.dueDate);
     const whenLabel = d < 0 ? `${Math.abs(d)}d overdue` : d === 0 ? "Today" : d === 1 ? "Tomorrow" : dayFmt.format(r.dueDate);
-    const merchant = r.merchant.length > 40 ? r.merchant.slice(0, 37) + "…" : r.merchant;
+    const merchant = displayMerchant(r.merchant);
     lines.push(
       `• *${mdv2Escape(whenLabel)}* · ${mdv2Escape(merchant)} · ${mdv2Escape(fmt.format(Number(r.amount)))}`
     );
