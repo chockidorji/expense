@@ -2,10 +2,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Check, X, Clock } from "lucide-react";
+import { RefreshCw, Check, X, Clock, Plus } from "lucide-react";
 import { displayMerchant } from "@/lib/merchant-display";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import AddManualSheet from "./add-manual-sheet";
 
 const fmt = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 const dayFmt = new Intl.DateTimeFormat("en-IN", { weekday: "short", day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
@@ -48,6 +49,7 @@ const BUCKET_LABEL: Record<string, string> = {
 export default function UpcomingList() {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
 
   async function load() {
     const r = await fetch("/api/upcoming?horizonDays=60");
@@ -138,10 +140,16 @@ export default function UpcomingList() {
         <div className="text-xs text-muted-foreground">
           {rows ? (rows.length === 0 ? "No predictions yet." : `${rows.length} predicted · ${fmt.format(total)} total`) : ""}
         </div>
-        <Button variant="outline" onClick={refresh} disabled={busy} className="min-h-[40px]">
-          <RefreshCw className={cn("h-4 w-4 mr-1.5", busy && "animate-spin")} aria-hidden />
-          {busy ? "Scanning…" : "Refresh"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setAddOpen(true)} className="min-h-[40px]">
+            <Plus className="h-4 w-4 mr-1.5" aria-hidden />
+            Add manually
+          </Button>
+          <Button variant="outline" onClick={refresh} disabled={busy} className="min-h-[40px]">
+            <RefreshCw className={cn("h-4 w-4 mr-1.5", busy && "animate-spin")} aria-hidden />
+            {busy ? "Scanning…" : "Refresh"}
+          </Button>
+        </div>
       </div>
 
       {rows === null ? (
@@ -244,6 +252,8 @@ export default function UpcomingList() {
           ))}
         </div>
       )}
+
+      <AddManualSheet open={addOpen} onOpenChange={setAddOpen} onAdded={load} />
     </>
   );
 }

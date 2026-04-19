@@ -86,6 +86,7 @@ export const CATEGORY_KEYWORDS: Record<string, string[]> = {
     "udemy", "coursera", "byjus", "unacademy", "school", "college",
     "tuition", "canvapro", "canva pro",
     "certifications", "certification", "usm certifications",
+    "paksam", "tenzin lhamu", // user's child's school fee via paksam@ybl
   ],
   travel: [
     "indigo", "air india", "vistara", "makemytrip", "goibibo", "cleartrip",
