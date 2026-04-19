@@ -63,12 +63,13 @@ export default function UploadPage() {
 
   return (
     <main className="mx-auto max-w-4xl p-6 space-y-6">
-      <h1 className="text-2xl font-semibold">Import CSV</h1>
+      <h1 className="text-2xl font-semibold">Import statement</h1>
 
       <Card>
         <CardHeader><CardTitle>1 · Choose file</CardTitle></CardHeader>
         <CardContent>
-          <Input type="file" accept=".csv,text/csv" onChange={onFile} />
+          <Input type="file" accept=".csv,.xlsx,.xls,.xlsm,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" onChange={onFile} />
+          <p className="text-xs text-muted-foreground mt-1">CSV or Excel (.xlsx / .xls / .xlsm). Max 10 MB.</p>
           {preview && <p className="text-sm text-muted-foreground mt-2">{preview.rowCount} rows detected.</p>}
         </CardContent>
       </Card>

@@ -36,7 +36,7 @@ export default async function DashboardPage() {
         <div className="flex gap-2">
           <AddTransaction />
           <SyncButton />
-          <Link href="/upload"><Button variant="outline">Import CSV</Button></Link>
+          <Link href="/upload"><Button variant="outline">Import statement</Button></Link>
           <Link href="/settings/categories"><Button variant="ghost" size="sm">Overrides</Button></Link>
           <SignOutButton />
         </div>
