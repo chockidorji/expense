@@ -62,13 +62,14 @@ export async function getCategoryBreakdown(userId: string, anchor?: Date) {
 }
 
 /** Format a UTC Date as its IST calendar day, "YYYY-MM-DD". */
+const IST_DAY_FMT = new Intl.DateTimeFormat("en-CA", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  timeZone: TZ,
+});
 function istDayKey(d: Date): string {
-  const z = toZonedTime(d, TZ);
-  // toZonedTime returns a Date whose UTC getters read the IST wall-clock.
-  const y = z.getUTCFullYear();
-  const m = String(z.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(z.getUTCDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  return IST_DAY_FMT.format(d);
 }
 
 /**
@@ -90,15 +91,13 @@ export async function getDailyTrend(userId: string, _unused?: number, anchor?: D
 
   const buckets = new Map<string, number>();
   // Derive the month's IST year/month from `from`, then generate keys 1..lastDay.
-  const fromIst = toZonedTime(from, TZ);
-  const year = fromIst.getUTCFullYear();
-  const monthIdx = fromIst.getUTCMonth();
-  const endIst = toZonedTime(end, TZ);
-  const endDay = endIst.getUTCMonth() === monthIdx && endIst.getUTCFullYear() === year
-    ? endIst.getUTCDate()
-    : new Date(Date.UTC(year, monthIdx + 1, 0)).getUTCDate(); // last day of the month
+  const [fromY, fromM] = istDayKey(from).split("-").map(Number); // YYYY, MM, DD
+  const endKey = istDayKey(end);
+  const [endY, endM, endD] = endKey.split("-").map(Number);
+  const lastDayOfMonth = new Date(Date.UTC(fromY, fromM, 0)).getUTCDate();
+  const endDay = (endY === fromY && endM === fromM) ? endD : lastDayOfMonth;
   for (let day = 1; day <= endDay; day++) {
-    const key = `${year}-${String(monthIdx + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const key = `${fromY}-${String(fromM).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     buckets.set(key, 0);
   }
 
