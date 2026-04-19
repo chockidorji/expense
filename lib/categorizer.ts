@@ -73,7 +73,10 @@ export const CATEGORY_KEYWORDS: Record<string, string[]> = {
     "goods and services t", "gst ", "non tax receipts", "ntrp",
     "income tax", "advance tax", "e grass", "egrass",
   ],
-  rent: ["rent", "housing", "landlord", "nobroker"],
+  rent: [
+    "rent", "housing", "landlord", "nobroker",
+    "suprabha langthasa", // user's landlord, paid via UPI
+  ],
   health: [
     "apollo", "pharmeasy", "1mg", "practo", "hospital", "clinic",
     "diagnostic", "medplus", "netmeds", "salon", "spa", "saloon",
