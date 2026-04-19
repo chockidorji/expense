@@ -1,11 +1,21 @@
 import { forUser, prisma } from "./db";
 import { TxnType } from "@prisma/client";
-import { startOfMonth, endOfMonth } from "date-fns";
-import { toZonedTime, fromZonedTime } from "date-fns-tz";
 
 const TZ = "Asia/Kolkata";
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 
-/** "2026-04" → an IST Date pointing at midnight on the 1st of that month. */
+/** For a UTC instant, what IST year/month (1-12) is it in? */
+function istYearMonth(d: Date): { year: number; month: number } {
+  const fmt = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    timeZone: TZ,
+  });
+  const [y, m] = fmt.format(d).split("-");
+  return { year: Number(y), month: Number(m) };
+}
+
+/** "2026-04" → UTC instant at the first millisecond of April 1st IST. */
 export function parseMonthParam(month: string | undefined): Date | null {
   if (!month) return null;
   const m = month.match(/^(\d{4})-(\d{1,2})$/);
@@ -13,21 +23,25 @@ export function parseMonthParam(month: string | undefined): Date | null {
   const year = Number(m[1]);
   const mon = Number(m[2]);
   if (!Number.isFinite(year) || !Number.isFinite(mon) || mon < 1 || mon > 12) return null;
-  // Build "1st of month midnight IST" then convert to UTC instant.
-  return fromZonedTime(new Date(year, mon - 1, 1, 0, 0, 0, 0), TZ);
+  return new Date(Date.UTC(year, mon - 1, 1) - IST_OFFSET_MS);
 }
 
-/** Month bounds for a given anchor (UTC instant). Defaults to "current month in IST". */
+/**
+ * Month bounds in UTC that exactly cover an IST calendar month. Defaults to
+ * the current IST month. Computes bounds via explicit IST-offset math rather
+ * than date-fns-tz round-tripping, because toZonedTime + startOfMonth drifts
+ * by 5h30m when the server runs outside IST.
+ */
 function monthBoundsFor(anchor?: Date): { from: Date; to: Date; label: Date } {
   const baseUtc = anchor ?? new Date();
-  const istAnchor = toZonedTime(baseUtc, TZ);
-  const monthStartIst = startOfMonth(istAnchor);
-  const monthEndIst = endOfMonth(istAnchor);
-  return {
-    from: fromZonedTime(monthStartIst, TZ),
-    to: fromZonedTime(monthEndIst, TZ),
-    label: monthStartIst,
-  };
+  const { year, month } = istYearMonth(baseUtc);
+  const month0 = month - 1;
+
+  const from = new Date(Date.UTC(year, month0, 1) - IST_OFFSET_MS);
+  const to = new Date(Date.UTC(year, month0 + 1, 1) - IST_OFFSET_MS - 1);
+  // Mid-month UTC noon — used purely for .toLocaleDateString() label formatting.
+  const label = new Date(Date.UTC(year, month0, 15, 12, 0, 0));
+  return { from, to, label };
 }
 
 export async function getMonthKpis(userId: string, anchor?: Date) {
