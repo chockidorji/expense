@@ -14,20 +14,31 @@ const BodySchema = z.object({
   token: z.string().regex(/^[a-f0-9]{32}$/),
   mapping: z.object({
     date: z.string().min(1),
-    amount: z.string().min(1),
     merchant: z.string().min(1),
+    // Single-column mode
+    amount: z.string().optional(),
     type: z.string().optional(),
+    // Two-column mode (HDFC/most banks use separate Withdrawal & Deposit columns)
+    withdrawalAmount: z.string().optional(),
+    depositAmount: z.string().optional(),
     account: z.string().optional(),
-  }),
+  }).refine(
+    m => !!m.amount || !!m.withdrawalAmount || !!m.depositAmount,
+    { message: "Map either 'amount' (single column) or at least one of 'withdrawalAmount' / 'depositAmount' (two-column mode)" },
+  ),
   defaultType: z.enum(["DEBIT", "CREDIT"]).default("DEBIT"),
 });
 
-const DATE_FORMATS = ["dd/MM/yyyy", "dd-MM-yyyy", "yyyy-MM-dd", "MM/dd/yyyy", "dd MMM yyyy"];
+const DATE_FORMATS = ["dd/MM/yyyy", "dd-MM-yyyy", "yyyy-MM-dd", "MM/dd/yyyy", "dd MMM yyyy", "dd/MM/yy", "dd-MM-yy"];
 
-function parseAmount(raw: string): number | null {
+function parseAmount(raw: string | undefined | null): number | null {
+  if (!raw) return null;
   const cleaned = raw.replace(/[₹,]/g, "").replace(/Rs\.?/i, "").trim();
+  if (!cleaned || cleaned === "-" || cleaned === "0" || cleaned === "0.00") return null;
   const m = cleaned.match(/^(-?\d+(?:\.\d+)?)/);
-  return m ? Math.abs(parseFloat(m[1])) : null;
+  if (!m) return null;
+  const n = Math.abs(parseFloat(m[1]));
+  return n > 0 ? n : null;
 }
 function parseCsvDate(raw: string): Date | null {
   for (const fmt of DATE_FORMATS) {
@@ -47,6 +58,33 @@ function parseType(raw: string | undefined, fallback: TxnType): TxnType {
   return fallback;
 }
 
+/**
+ * Given a row, resolve (amount, type) based on which mapping mode is active.
+ * Returns null if the row has no usable amount — caller should record an error.
+ */
+function resolveAmountAndType(
+  row: Record<string, string>,
+  mapping: z.infer<typeof BodySchema>["mapping"],
+  defaultType: TxnType,
+): { amount: number; type: TxnType } | null {
+  // Two-column mode — check withdrawal first, then deposit.
+  if (mapping.withdrawalAmount || mapping.depositAmount) {
+    const w = mapping.withdrawalAmount ? parseAmount(row[mapping.withdrawalAmount]) : null;
+    const d = mapping.depositAmount ? parseAmount(row[mapping.depositAmount]) : null;
+    if (w && w > 0) return { amount: w, type: TxnType.DEBIT };
+    if (d && d > 0) return { amount: d, type: TxnType.CREDIT };
+    return null;
+  }
+  // Single-column mode
+  if (mapping.amount) {
+    const amt = parseAmount(row[mapping.amount]);
+    if (!amt) return null;
+    const type = parseType(mapping.type ? row[mapping.type] : undefined, defaultType);
+    return { amount: amt, type };
+  }
+  return null;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { userId } = await requireUser();
@@ -61,25 +99,26 @@ export async function POST(req: NextRequest) {
 
     for (let i = 0; i < parsed.data.length; i++) {
       const row = parsed.data[i];
-      const rawAmount = row[body.mapping.amount];
       const rawDate = row[body.mapping.date];
       const rawMerchant = row[body.mapping.merchant];
-      const amount = rawAmount ? parseAmount(rawAmount) : null;
       const txDate = rawDate ? parseCsvDate(rawDate) : null;
-      if (!amount || !txDate || !rawMerchant) {
-        errors.push({ row: i + 2, reason: `Unparseable: amount=${rawAmount}, date=${rawDate}, merchant=${rawMerchant}` });
+      const amtType = resolveAmountAndType(row, body.mapping, body.defaultType);
+      if (!amtType || !txDate || !rawMerchant) {
+        errors.push({
+          row: i + 2,
+          reason: `Unparseable: date=${rawDate ?? "-"}, merchant=${rawMerchant ?? "-"}, amount=${amtType ? amtType.amount : "none"}`,
+        });
         continue;
       }
-      const type = parseType(body.mapping.type ? row[body.mapping.type] : undefined, body.defaultType);
       const merchantNormalized = normalizeMerchant(rawMerchant);
       const category = overrideMap.get(merchantNormalized) ?? categorizeByKeywords(merchantNormalized);
       const out = await insertOrLog(userId, {
-        amount,
+        amount: amtType.amount,
         transactionDate: txDate,
         merchant: rawMerchant,
         merchantNormalized,
         category,
-        type,
+        type: amtType.type,
         source: TxnSource.CSV,
         bankAccount: body.mapping.account ? row[body.mapping.account] ?? null : null,
         referenceNumber: null,

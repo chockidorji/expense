@@ -19,12 +19,37 @@ type Preview = {
   totalRowsBeforeSkip: number;
 };
 
+type AmountMode = "single" | "dual";
+
+type Mapping = {
+  date: string;
+  merchant: string;
+  // single-mode
+  amount: string;
+  type: string; // "__none__" means no explicit type column
+  // dual-mode
+  withdrawalAmount: string;
+  depositAmount: string;
+  account: string; // "__none__" means none
+};
+
+const emptyMapping: Mapping = {
+  date: "",
+  merchant: "",
+  amount: "",
+  type: "__none__",
+  withdrawalAmount: "",
+  depositAmount: "",
+  account: "__none__",
+};
+
 export default function UploadPage() {
   const router = useRouter();
   const fileRef = useRef<File | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [skipInput, setSkipInput] = useState<string>("");
-  const [mapping, setMapping] = useState({ date: "", amount: "", merchant: "", type: "__none__", account: "__none__" });
+  const [amountMode, setAmountMode] = useState<AmountMode>("dual");
+  const [mapping, setMapping] = useState<Mapping>(emptyMapping);
   const [defaultType, setDefaultType] = useState<"DEBIT" | "CREDIT">("DEBIT");
   const [importing, setImporting] = useState(false);
   const [reloadingPreview, setReloadingPreview] = useState(false);
@@ -51,7 +76,7 @@ export default function UploadPage() {
     if (!j) return;
     setPreview(j);
     setSkipInput(String(j.skipRows));
-    setMapping({ date: "", amount: "", merchant: "", type: "__none__", account: "__none__" });
+    setMapping(emptyMapping);
     setResult(null);
   }
 
@@ -64,31 +89,50 @@ export default function UploadPage() {
     setReloadingPreview(false);
     if (!j) return;
     setPreview(j);
-    setMapping({ date: "", amount: "", merchant: "", type: "__none__", account: "__none__" });
+    setMapping(emptyMapping);
     setResult(null);
+  }
+
+  function mappingReady(): string | null {
+    if (!mapping.date) return "Map the date column";
+    if (!mapping.merchant) return "Map the merchant column";
+    if (amountMode === "single") {
+      if (!mapping.amount) return "Map the amount column";
+    } else {
+      if (!mapping.withdrawalAmount && !mapping.depositAmount) return "Map at least one of withdrawal / deposit amount";
+    }
+    return null;
   }
 
   async function onImport() {
     if (!preview) return;
-    if (!mapping.date || !mapping.amount || !mapping.merchant) {
-      toast.error("Map date, amount, merchant");
-      return;
-    }
+    const err = mappingReady();
+    if (err) { toast.error(err); return; }
+
+    const body = {
+      token: preview.token,
+      mapping: {
+        date: mapping.date,
+        merchant: mapping.merchant,
+        account: mapping.account === "__none__" ? undefined : mapping.account,
+        ...(amountMode === "single"
+          ? {
+              amount: mapping.amount,
+              type: mapping.type === "__none__" ? undefined : mapping.type,
+            }
+          : {
+              withdrawalAmount: mapping.withdrawalAmount || undefined,
+              depositAmount: mapping.depositAmount || undefined,
+            }),
+      },
+      defaultType,
+    };
+
     setImporting(true);
     const r = await fetch("/api/upload/csv/import", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        token: preview.token,
-        mapping: {
-          date: mapping.date,
-          amount: mapping.amount,
-          merchant: mapping.merchant,
-          type: mapping.type === "__none__" ? undefined : mapping.type,
-          account: mapping.account === "__none__" ? undefined : mapping.account,
-        },
-        defaultType,
-      }),
+      body: JSON.stringify(body),
     });
     setImporting(false);
     if (!r.ok) { toast.error("Import failed"); return; }
@@ -116,7 +160,7 @@ export default function UploadPage() {
             <CardHeader><CardTitle>2 · Header row</CardTitle></CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-2">
-                If the column names below look wrong (e.g. "1", "2", "HDFC BANK Ltd..."), the banner-row detection missed your header. Change the number of rows to skip and re-preview.
+                If the column names below look wrong (e.g. "1", "2", "HDFC BANK Ltd..."), banner-row detection missed the header. Change the number to skip and re-preview.
               </p>
               <div className="flex items-end gap-3">
                 <div className="grid gap-1.5">
@@ -135,52 +179,109 @@ export default function UploadPage() {
                 </Button>
                 <span className="text-xs text-muted-foreground">Auto-detected: {preview.detectedSkip}</span>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">Row {preview.skipRows + 1} of the original file is being used as the header. Rows above it are ignored.</p>
+              <p className="text-xs text-muted-foreground mt-2">Row {preview.skipRows + 1} of the original file is being used as the header.</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader><CardTitle>3 · Map columns</CardTitle></CardHeader>
-            <CardContent className="grid gap-3 md:grid-cols-2">
-              {(["date", "amount", "merchant"] as const).map(k => (
-                <div key={k} className="grid gap-1.5">
-                  <Label className="capitalize">{k} *</Label>
-                  <Select value={mapping[k]} onValueChange={v => setMapping(m => ({ ...m, [k]: v ?? "" }))}>
-                    <SelectTrigger><SelectValue placeholder={`Select ${k} column`} /></SelectTrigger>
+            <CardContent className="space-y-4">
+              <div className="grid gap-1.5 max-w-xs">
+                <Label>Amount column layout</Label>
+                <Select value={amountMode} onValueChange={(v: any) => setAmountMode((v ?? "dual") as AmountMode)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="dual">Two columns — Withdrawal + Deposit (most Indian banks)</SelectItem>
+                    <SelectItem value="single">Single column with optional Type</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-1.5">
+                  <Label>Date *</Label>
+                  <Select value={mapping.date} onValueChange={v => setMapping(m => ({ ...m, date: v ?? "" }))}>
+                    <SelectTrigger><SelectValue placeholder="Select date column" /></SelectTrigger>
                     <SelectContent>{preview.headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
-              ))}
-              <div className="grid gap-1.5">
-                <Label>Type column (optional)</Label>
-                <Select value={mapping.type} onValueChange={v => setMapping(m => ({ ...m, type: v ?? "__none__" }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">None — use default</SelectItem>
-                    {preview.headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <div className="grid gap-1.5">
+                  <Label>Merchant / Narration *</Label>
+                  <Select value={mapping.merchant} onValueChange={v => setMapping(m => ({ ...m, merchant: v ?? "" }))}>
+                    <SelectTrigger><SelectValue placeholder="Select merchant column" /></SelectTrigger>
+                    <SelectContent>{preview.headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+
+                {amountMode === "single" ? (
+                  <>
+                    <div className="grid gap-1.5">
+                      <Label>Amount *</Label>
+                      <Select value={mapping.amount} onValueChange={v => setMapping(m => ({ ...m, amount: v ?? "" }))}>
+                        <SelectTrigger><SelectValue placeholder="Select amount column" /></SelectTrigger>
+                        <SelectContent>{preview.headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label>Type column (optional)</Label>
+                      <Select value={mapping.type} onValueChange={v => setMapping(m => ({ ...m, type: v ?? "__none__" }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">None — use default</SelectItem>
+                          {preview.headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="grid gap-1.5">
+                      <Label>Withdrawal amount *</Label>
+                      <Select value={mapping.withdrawalAmount} onValueChange={v => setMapping(m => ({ ...m, withdrawalAmount: v ?? "" }))}>
+                        <SelectTrigger><SelectValue placeholder="Select withdrawal column" /></SelectTrigger>
+                        <SelectContent>{preview.headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label>Deposit amount *</Label>
+                      <Select value={mapping.depositAmount} onValueChange={v => setMapping(m => ({ ...m, depositAmount: v ?? "" }))}>
+                        <SelectTrigger><SelectValue placeholder="Select deposit column" /></SelectTrigger>
+                        <SelectContent>{preview.headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                )}
+
+                <div className="grid gap-1.5">
+                  <Label>Account column (optional)</Label>
+                  <Select value={mapping.account} onValueChange={v => setMapping(m => ({ ...m, account: v ?? "__none__" }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">None</SelectItem>
+                      {preview.headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {amountMode === "single" && (
+                  <div className="grid gap-1.5">
+                    <Label>Default type (if no type column)</Label>
+                    <Select value={defaultType} onValueChange={(v: any) => setDefaultType((v ?? "DEBIT") as "DEBIT" | "CREDIT")}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="DEBIT">Debit</SelectItem>
+                        <SelectItem value="CREDIT">Credit</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
-              <div className="grid gap-1.5">
-                <Label>Account column (optional)</Label>
-                <Select value={mapping.account} onValueChange={v => setMapping(m => ({ ...m, account: v ?? "__none__" }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">None</SelectItem>
-                    {preview.headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-1.5">
-                <Label>Default type (if no type column)</Label>
-                <Select value={defaultType} onValueChange={(v: any) => setDefaultType((v ?? "DEBIT") as "DEBIT" | "CREDIT")}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="DEBIT">Debit</SelectItem>
-                    <SelectItem value="CREDIT">Credit</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+
+              {amountMode === "dual" && (
+                <p className="text-xs text-muted-foreground">
+                  Per row: if withdrawal &gt; 0 the transaction is a DEBIT; otherwise if deposit &gt; 0 it's a CREDIT; otherwise the row is skipped.
+                </p>
+              )}
             </CardContent>
           </Card>
 
