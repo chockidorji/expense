@@ -1,6 +1,6 @@
 import { forUser, prisma } from "./db";
 import { TxnType } from "@prisma/client";
-import { startOfMonth, endOfMonth, subDays, startOfDay } from "date-fns";
+import { startOfMonth, endOfMonth, startOfDay } from "date-fns";
 import { toZonedTime, fromZonedTime } from "date-fns-tz";
 
 const TZ = "Asia/Kolkata";
@@ -62,22 +62,31 @@ export async function getCategoryBreakdown(userId: string, anchor?: Date) {
 }
 
 /**
- * 30-day debit trend ending on the last day of the anchor's month (or today if
- * anchor is the current month). Keeps the chart aligned with the KPI window.
+ * Daily debit trend scoped to the anchor month (1st → last day). If anchor is
+ * the current month, it ends at today — future days aren't rendered.
+ * The chart's x-axis length therefore matches the month's length (28/30/31).
  */
-export async function getDailyTrend(userId: string, days = 30, anchor?: Date) {
-  const { to } = monthBoundsFor(anchor);
+export async function getDailyTrend(userId: string, _unused?: number, anchor?: Date) {
+  void _unused; // preserved in the signature for backwards compatibility
+  const { from, to } = monthBoundsFor(anchor);
   const now = new Date();
-  const end = anchor && to < now ? to : now;
-  const start = fromZonedTime(startOfDay(subDays(toZonedTime(end, TZ), days - 1)), TZ);
+  const end = to < now ? to : now;
+
   const rows = await forUser(userId).transaction.findMany({
-    where: { type: TxnType.DEBIT, transactionDate: { gte: start, lte: end } },
+    where: { type: TxnType.DEBIT, transactionDate: { gte: from, lte: end } },
     select: { amount: true, transactionDate: true },
     orderBy: { transactionDate: "asc" },
   });
+
   const buckets = new Map<string, number>();
-  for (let i = 0; i < days; i++) {
-    const d = startOfDay(subDays(toZonedTime(end, TZ), days - 1 - i));
+  // Pre-seed one bucket per IST day from the 1st through `end` inclusive.
+  const istStart = toZonedTime(from, TZ);
+  const istEnd = toZonedTime(end, TZ);
+  for (
+    let d = startOfDay(istStart);
+    d.getTime() <= startOfDay(istEnd).getTime();
+    d = new Date(d.getTime() + 24 * 60 * 60 * 1000)
+  ) {
     buckets.set(d.toISOString().slice(0, 10), 0);
   }
   for (const r of rows) {

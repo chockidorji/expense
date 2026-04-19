@@ -58,7 +58,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
     getMonthKpis(userId, selectedAnchor),
     getMonthKpis(userId),                 // no anchor = current IST month
     getCategoryBreakdown(userId, selectedAnchor),
-    getDailyTrend(userId, 30, selectedAnchor),
+    getDailyTrend(userId, undefined, selectedAnchor),
     getMonthsWithActivity(userId),
   ]);
 
@@ -102,8 +102,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
         currentMonth={{ totalSpend: currentKpis.totalSpend, monthLabel: currentKpis.monthLabel }}
       />
       <div className="grid gap-6 lg:grid-cols-2">
-        <CategoryPie data={pie} />
-        <TrendLine data={trend} />
+        <CategoryPie data={pie} monthLabel={kpis.monthLabel} />
+        <TrendLine data={trend} monthLabel={kpis.monthLabel} />
       </div>
       <TransactionTable
         initialFrom={monthBounds.from}

@@ -4,13 +4,20 @@ import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recha
 
 const COLORS = ["#0ea5e9", "#22c55e", "#f59e0b", "#ef4444", "#a855f7", "#14b8a6", "#f97316", "#8b5cf6", "#84cc16", "#ec4899", "#64748b"];
 
-export default function CategoryPie({ data }: { data: { category: string; amount: number }[] }) {
+export default function CategoryPie({
+  data,
+  monthLabel,
+}: {
+  data: { category: string; amount: number }[];
+  monthLabel?: string;
+}) {
+  const title = monthLabel ? `Spend by category · ${monthLabel}` : "Spend by category";
   return (
     <Card>
-      <CardHeader><CardTitle>Spend by category</CardTitle></CardHeader>
+      <CardHeader><CardTitle>{title}</CardTitle></CardHeader>
       <CardContent className="h-[300px]">
         {data.length === 0 ? (
-          <div className="h-full grid place-items-center text-sm text-muted-foreground">No spend yet this month.</div>
+          <div className="h-full grid place-items-center text-sm text-muted-foreground">No spend in this month.</div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
