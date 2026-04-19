@@ -5,6 +5,8 @@ import { normalizeMerchant, insertOrLog } from "./dedup";
 import { categorize } from "./categorizer";
 import { TxnSource } from "@prisma/client";
 import { refreshUpcomingForUser } from "./upcoming-sync";
+import { scanUpcomingFromGmail } from "./upcoming-email";
+import { notifyNewEmailUpcoming } from "./upcoming-notify";
 
 export type SyncResult = {
   userId: string;
@@ -87,6 +89,18 @@ export async function syncUserGmail(userId: string, newerThanDays = 1): Promise<
     } catch (e) {
       result.errors.push(`upcoming refresh failed: ${(e as Error).message}`);
     }
+  }
+
+  // Also scan Gmail for upcoming-payment signals (renewal notices, CC
+  // statements, utility bills). Anything new → Telegram ping immediately.
+  try {
+    const scan = await scanUpcomingFromGmail(userId);
+    if (scan.newMatches.length > 0) {
+      await notifyNewEmailUpcoming(userId, scan.newMatches);
+    }
+    if (scan.errors.length) result.errors.push(...scan.errors.map(e => `email-scan: ${e}`));
+  } catch (e) {
+    result.errors.push(`email-scan failed: ${(e as Error).message}`);
   }
 
   return result;

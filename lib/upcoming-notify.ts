@@ -52,6 +52,46 @@ export async function buildDigestForUser(userId: string, horizonDays = 7): Promi
   return lines.join("\n");
 }
 
+/**
+ * Fires an immediate Telegram message when new upcoming payments are detected
+ * from email. Called from the gmail-sync pipeline after each sync.
+ */
+export async function notifyNewEmailUpcoming(
+  userId: string,
+  rows: Array<{ merchant: string; amount: number; dueDate: Date; category: string | null }>
+): Promise<{ ok: boolean; error?: string; skipped?: string }> {
+  if (!isTelegramConfigured()) return { ok: false, skipped: "telegram not configured" };
+  if (rows.length === 0) return { ok: false, skipped: "no rows" };
+
+  void userId; // single-user build; chat_id read from env
+
+  const lines: string[] = [];
+  lines.push(`📧 *New upcoming payment${rows.length === 1 ? "" : "s"} from email*`);
+  lines.push("");
+  for (const r of rows) {
+    const d = daysUntil(r.dueDate);
+    const whenLabel =
+      d < 0 ? `${Math.abs(d)}d overdue` : d === 0 ? "Today" : d === 1 ? "Tomorrow" : dayFmt.format(r.dueDate);
+    const merchant = displayMerchantSafe(r.merchant);
+    lines.push(`• *${mdv2Escape(whenLabel)}* · ${mdv2Escape(merchant)} · ${mdv2Escape(fmt.format(r.amount))}`);
+  }
+  lines.push("");
+  lines.push(`[Manage](${SITE_URL}/upcoming)`);
+  const text = lines.join("\n");
+  return sendTelegramMessage(text, { parseMode: "MarkdownV2" });
+}
+
+// Lazy import to avoid circular: merchant-display.ts is safe to import here.
+function displayMerchantSafe(raw: string): string {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { displayMerchant } = require("./merchant-display") as typeof import("./merchant-display");
+    return displayMerchant(raw);
+  } catch {
+    return raw;
+  }
+}
+
 /** Returns the number of users actually notified. */
 export async function sendDigestForAllUsers(): Promise<{ sent: number; skipped: number; errors: string[] }> {
   const errors: string[] = [];
