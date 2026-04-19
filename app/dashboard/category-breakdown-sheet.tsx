@@ -6,8 +6,36 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const fmt = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
+const dayFmt = new Intl.DateTimeFormat("en-IN", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: "Asia/Kolkata",
+});
+const timeFmt = new Intl.DateTimeFormat("en-IN", {
+  hour: "numeric",
+  minute: "2-digit",
+  hour12: true,
+  timeZone: "Asia/Kolkata",
+});
 
-type MerchantRow = { merchant: string; amount: number; count: number };
+function formatTxnWhen(iso: string): string {
+  const d = new Date(iso);
+  // IST midnight transactions (e.g. 00:00 +05:30) are date-only; don't show
+  // a meaningless "12:00 AM".
+  const istHours = d.getUTCHours() * 60 + d.getUTCMinutes();
+  const midnightIstMinutes = (24 * 60 - 5 * 60 - 30) % (24 * 60); // 18:30 UTC = 00:00 IST
+  const isMidnightIst = istHours === midnightIstMinutes;
+  return isMidnightIst ? dayFmt.format(d) : `${dayFmt.format(d)} · ${timeFmt.format(d)}`;
+}
+
+type MerchantRow = {
+  merchant: string;
+  amount: number;
+  count: number;
+  firstDate?: string | null;
+  lastDate?: string | null;
+};
 
 type Props = {
   open: boolean;
@@ -83,7 +111,18 @@ export default function CategoryBreakdownSheet({
                         {r.merchant}
                       </div>
                       <div className="text-[11px] text-muted-foreground">
-                        {r.count} {r.count === 1 ? "txn" : "txns"}
+                        {r.count === 1 && r.firstDate ? (
+                          <>{formatTxnWhen(r.firstDate)}</>
+                        ) : r.count > 1 && r.firstDate && r.lastDate && r.firstDate !== r.lastDate ? (
+                          <>
+                            {r.count} txns · {dayFmt.format(new Date(r.firstDate))} → {dayFmt.format(new Date(r.lastDate))}
+                          </>
+                        ) : (
+                          <>
+                            {r.count} {r.count === 1 ? "txn" : "txns"}
+                            {r.lastDate ? <> · {dayFmt.format(new Date(r.lastDate))}</> : null}
+                          </>
+                        )}
                       </div>
                     </div>
                     <div className="text-sm font-semibold tabular-nums whitespace-nowrap">

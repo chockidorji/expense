@@ -24,6 +24,8 @@ export async function GET(req: NextRequest) {
       },
       _sum: { amount: true },
       _count: { _all: true },
+      _min: { transactionDate: true },
+      _max: { transactionDate: true },
     });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -32,6 +34,12 @@ export async function GET(req: NextRequest) {
         merchant: r.merchant as string,
         amount: Number(r._sum?.amount ?? 0),
         count: (r._count?._all ?? 0) as number,
+        firstDate: r._min?.transactionDate
+          ? (r._min.transactionDate instanceof Date ? r._min.transactionDate.toISOString() : String(r._min.transactionDate))
+          : null,
+        lastDate: r._max?.transactionDate
+          ? (r._max.transactionDate instanceof Date ? r._max.transactionDate.toISOString() : String(r._max.transactionDate))
+          : null,
       }))
       .sort((a, b) => b.amount - a.amount);
 
