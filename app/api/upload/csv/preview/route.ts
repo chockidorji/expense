@@ -28,12 +28,6 @@ const HEADER_HINTS = [
   "balance", "ref", "reference", "chq", "cheque",
 ];
 
-/**
- * Auto-detect the header row. Indian bank statements commonly have 5–20 banner
- * rows before the real column headers. We scan the first ~30 rows and pick the
- * first one that (a) has ≥4 non-empty cells and (b) contains ≥2 common banking
- * header keywords case-insensitively.
- */
 function detectHeaderRow(allRows: string[][]): number {
   const limit = Math.min(allRows.length, 30);
   let bestIdx = 0;
@@ -50,6 +44,63 @@ function detectHeaderRow(allRows: string[][]): number {
     }
   }
   return bestIdx;
+}
+
+/**
+ * Given the detected header list, suggest which column maps to each role so
+ * the UI can pre-fill the dropdowns. Looks for common Indian-bank header
+ * phrasings (HDFC, SBI, ICICI, Axis, Kotak all use similar words).
+ */
+type SuggestedMapping = {
+  date: string | null;
+  merchant: string | null;
+  amount: string | null;
+  withdrawalAmount: string | null;
+  depositAmount: string | null;
+  type: string | null;
+  account: string | null;
+  recommendedMode: "single" | "dual";
+};
+
+function suggestMapping(headers: string[]): SuggestedMapping {
+  const lower = headers.map(h => h.toLowerCase().trim());
+  const find = (...patterns: (string | RegExp)[]): string | null => {
+    for (const p of patterns) {
+      const idx = lower.findIndex(h => (typeof p === "string" ? h.includes(p) : p.test(h)));
+      if (idx !== -1) return headers[idx];
+    }
+    return null;
+  };
+
+  // Date — "date" but NOT "value dt" / "value date" (those are cleared-on dates, secondary)
+  const date = (() => {
+    for (let i = 0; i < lower.length; i++) {
+      if (/value/.test(lower[i])) continue;
+      if (/\bdate\b|\btxn date\b|transaction date/.test(lower[i])) return headers[i];
+    }
+    return find("date");
+  })();
+
+  // Merchant / narration / description / particulars
+  const merchant = find("narration", "description", "particulars", "remarks", /^details?$/);
+
+  // Two-column amount
+  const withdrawalAmount = find("withdrawal", /\bdebit\b.*(amt|amount)/, /^debit/, "dr amount", "amount withdrawn");
+  const depositAmount = find("deposit", /\bcredit\b.*(amt|amount)/, /^credit/, "cr amount", "amount deposited");
+
+  // Single-column amount fallback
+  const amount = find(/^amount$/, /transaction.*amount/, /amount.*\(inr\)/, "inr");
+
+  // Type column (Dr/Cr)
+  const type = find("dr/cr", "cr/dr", /debit\s*\/\s*credit/, "txn type", /^type$/);
+
+  // Account / cheque / reference
+  const account = find("chq", "cheque", /^ref\b/, "reference");
+
+  // Prefer dual mode when both withdrawal+deposit found; else single if amount found.
+  const recommendedMode: "single" | "dual" = withdrawalAmount || depositAmount ? "dual" : "single";
+
+  return { date, merchant, amount, withdrawalAmount, depositAmount, type, account, recommendedMode };
 }
 
 export async function POST(req: NextRequest) {
@@ -69,7 +120,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "File is empty or has no usable sheet" }, { status: 400 });
     }
 
-    // First pass: parse without header to let us auto-detect / apply skipRows.
     const raw = Papa.parse<string[]>(csvText, { header: false, skipEmptyLines: true });
     const allRows = (raw.data as string[][]).filter(Array.isArray);
     if (allRows.length === 0) {
@@ -83,16 +133,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `skipRows (${skipRows}) is past the end of the file` }, { status: 400 });
     }
 
-    // Rebuild a CSV with the banner rows stripped so downstream import uses the right headers.
     const trimmedRows = allRows.slice(skipRows);
     const trimmedCsv = Papa.unparse(trimmedRows, { newline: "\n" });
 
-    // Now re-parse as header-mode to get sampleRows keyed by column name.
     const result = Papa.parse<Record<string, string>>(trimmedCsv, { header: true, skipEmptyLines: true });
     if (result.errors.length > 0 && result.data.length === 0) {
       return NextResponse.json({ error: "Unable to parse spreadsheet after skipping banner rows", details: result.errors.slice(0, 3) }, { status: 400 });
     }
     const headers = result.meta.fields ?? [];
+    const suggestedMapping = suggestMapping(headers);
 
     const token = await stashCsv(Buffer.from(trimmedCsv, "utf8"));
     return NextResponse.json({
@@ -103,6 +152,7 @@ export async function POST(req: NextRequest) {
       skipRows,
       detectedSkip,
       totalRowsBeforeSkip: allRows.length,
+      suggestedMapping,
     });
   } catch (e) {
     if (e instanceof Response) return e;
