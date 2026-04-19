@@ -11,6 +11,7 @@ export default function SyncButton() {
     <Button
       variant="outline"
       disabled={busy}
+      className="min-h-[44px] md:min-h-0"
       onClick={async () => {
         setBusy(true);
         const r = await fetch("/api/gmail/sync", { method: "POST" });
