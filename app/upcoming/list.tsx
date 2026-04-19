@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Check, X } from "lucide-react";
+import { RefreshCw, Check, X, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -97,6 +97,21 @@ export default function UpcomingList() {
     }
     setRows((prev) => prev?.filter((r) => r.id !== id) ?? null);
     toast.success("Marked as paid");
+  }
+
+  async function snooze(id: string, days = 7) {
+    const r = await fetch(`/api/upcoming/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ snoozeDays: days }),
+    });
+    if (!r.ok) {
+      toast.error("Failed");
+      return;
+    }
+    const j = await r.json();
+    setRows((prev) => prev?.map((r) => (r.id === id ? { ...r, dueDate: j.dueDate } : r)) ?? null);
+    toast.success(`Snoozed ${days}d`);
   }
 
   useEffect(() => {
@@ -198,6 +213,15 @@ export default function UpcomingList() {
                               title="Mark as paid"
                             >
                               <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-500" aria-hidden />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => snooze(r.id, 7)}
+                              aria-label={`Snooze ${r.merchant} 7 days`}
+                              className="h-7 w-7 rounded-full hover:bg-amber-500/15 grid place-items-center cursor-pointer transition-colors"
+                              title="Snooze 7 days"
+                            >
+                              <Clock className="h-3.5 w-3.5 text-amber-600 dark:text-amber-500" aria-hidden />
                             </button>
                             <button
                               type="button"

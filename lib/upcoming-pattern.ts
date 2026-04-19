@@ -2,18 +2,47 @@ import { forUser } from "./db";
 import { CATEGORY_KEYWORDS } from "./categorizer";
 import { TxnType } from "@prisma/client";
 
+// Tokens that are structural in Indian UPI / bank narrations and carry no
+// merchant identity. Stripping them lets us group rows whose only difference
+// is a per-txn reference number (e.g. `upi foo-bar 608xxxxxxxxx upi send money`
+// → `upi foo-bar 609xxxxxxxxx payment from phone` both collapse to "foo bar").
+const UPI_NOISE = new Set([
+  "upi", "pos", "neft", "imps", "atw", "dc", "me", "si", "cr", "dr", "pte", "ltd",
+  "yespay", "oksbi", "okhdfcbank", "okaxis", "okicici", "paytm", "ybl", "ibl",
+  "sbin", "hdfc", "icic", "kotak", "axis", "bank", "upib", "mandate", "mandateexecute",
+  "yesb", "hdfcbank", "icicibank",
+  "payment", "from", "phone", "send", "money", "transfer", "txn", "ref",
+]);
+
+/** Strip digits + UPI noise tokens, keep meaningful alpha tokens. */
+function upiTokenSignature(merchantNormalized: string): string {
+  const tokens = merchantNormalized.split(/\s+/).filter((t) => {
+    if (!t || t.length < 2) return false;
+    if (!/^[a-z]+$/.test(t)) return false; // strips anything containing digits
+    return !UPI_NOISE.has(t);
+  });
+  return tokens.slice(0, 4).join(" ");
+}
+
 /**
  * Collapses a `merchantNormalized` string to a stable "brand key" that stays
  * the same across months even when UPI reference numbers or POS transaction
- * IDs change. First tries to match a known-brand keyword from CATEGORY_KEYWORDS
- * (so e.g. all Hostinger rows collapse to "hostinger"); falls back to the raw
- * normalized string, which is still stable for clean POS / NEFT merchants.
+ * IDs change. In order:
+ *   1. Known-brand keyword from CATEGORY_KEYWORDS (e.g. all Hostinger rows
+ *      collapse to "hostinger").
+ *   2. Alpha-token signature for UPI rows — strips digits + noise so distinct
+ *      reference numbers don't split one merchant into many singleton groups.
+ *   3. Raw normalized string (stable for clean POS / NEFT merchants).
  */
 export function brandKey(merchantNormalized: string): { key: string; category: string | null } {
   for (const [cat, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
     for (const kw of keywords) {
       if (merchantNormalized.includes(kw)) return { key: kw, category: cat };
     }
+  }
+  if (merchantNormalized.startsWith("upi ")) {
+    const sig = upiTokenSignature(merchantNormalized);
+    if (sig.length >= 4) return { key: `upi:${sig}`, category: null };
   }
   return { key: merchantNormalized, category: null };
 }

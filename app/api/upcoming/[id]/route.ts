@@ -6,6 +6,7 @@ import { UpcomingStatus } from "@prisma/client";
 
 const PatchBody = z.object({
   status: z.nativeEnum(UpcomingStatus).optional(),
+  snoozeDays: z.number().int().min(1).max(90).optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
@@ -17,11 +18,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const existing = await prisma.upcomingPayment.findFirst({ where: { id: params.id, userId } });
     if (!existing) return NextResponse.json({ error: "not found" }, { status: 404 });
 
+    const data: { status?: UpcomingStatus; dueDate?: Date } = {};
+    if (body.status) data.status = body.status;
+    if (body.snoozeDays) {
+      data.dueDate = new Date(existing.dueDate.getTime() + body.snoozeDays * 86400e3);
+    }
+
     const updated = await prisma.upcomingPayment.update({
       where: { id: params.id },
-      data: { ...(body.status && { status: body.status }) },
+      data,
     });
-    return NextResponse.json({ id: updated.id, status: updated.status });
+    return NextResponse.json({ id: updated.id, status: updated.status, dueDate: updated.dueDate });
   } catch (e) {
     if (e instanceof Response) return e;
     if (e instanceof z.ZodError) return NextResponse.json({ error: e.flatten() }, { status: 400 });
