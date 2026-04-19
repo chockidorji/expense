@@ -5,29 +5,22 @@ import { toZonedTime, fromZonedTime } from "date-fns-tz";
 
 const TZ = "Asia/Kolkata";
 
-/**
- * Find the latest IST month that has ANY transactions for this user. If the
- * user has no transactions yet, falls back to the current IST month. The
- * dashboard's "this month" view follows this — so if you import a Nov/Dec
- * statement in April, you'll see Dec by default, not an empty April.
- */
-async function findLatestActivityMonthBounds(userId: string): Promise<{ from: Date; to: Date; label: Date }> {
-  // Anchor on the latest DEBIT since the dashboard KPIs / pie are debit-only.
-  // A lone CREDIT row (e.g. Jan 1 interest credit) shouldn't flip the default
-  // month to one that has zero actual spending.
-  const latestDebit = await prisma.transaction.findFirst({
-    where: { userId, type: TxnType.DEBIT },
-    orderBy: { transactionDate: "desc" },
-    select: { transactionDate: true },
-  });
-  const latestAny = latestDebit ?? await prisma.transaction.findFirst({
-    where: { userId },
-    orderBy: { transactionDate: "desc" },
-    select: { transactionDate: true },
-  });
+/** "2026-04" → an IST Date pointing at midnight on the 1st of that month. */
+export function parseMonthParam(month: string | undefined): Date | null {
+  if (!month) return null;
+  const m = month.match(/^(\d{4})-(\d{1,2})$/);
+  if (!m) return null;
+  const year = Number(m[1]);
+  const mon = Number(m[2]);
+  if (!Number.isFinite(year) || !Number.isFinite(mon) || mon < 1 || mon > 12) return null;
+  // Build "1st of month midnight IST" then convert to UTC instant.
+  return fromZonedTime(new Date(year, mon - 1, 1, 0, 0, 0, 0), TZ);
+}
 
-  const anchor = latestAny?.transactionDate ?? new Date();
-  const istAnchor = toZonedTime(anchor, TZ);
+/** Month bounds for a given anchor (UTC instant). Defaults to "current month in IST". */
+function monthBoundsFor(anchor?: Date): { from: Date; to: Date; label: Date } {
+  const baseUtc = anchor ?? new Date();
+  const istAnchor = toZonedTime(baseUtc, TZ);
   const monthStartIst = startOfMonth(istAnchor);
   const monthEndIst = endOfMonth(istAnchor);
   return {
@@ -37,8 +30,8 @@ async function findLatestActivityMonthBounds(userId: string): Promise<{ from: Da
   };
 }
 
-export async function getMonthKpis(userId: string) {
-  const { from, to, label } = await findLatestActivityMonthBounds(userId);
+export async function getMonthKpis(userId: string, anchor?: Date) {
+  const { from, to, label } = monthBoundsFor(anchor);
   const debits = await forUser(userId).transaction.findMany({
     where: { type: TxnType.DEBIT, transactionDate: { gte: from, lte: to } },
     select: { amount: true, category: true },
@@ -56,8 +49,8 @@ export async function getMonthKpis(userId: string) {
   };
 }
 
-export async function getCategoryBreakdown(userId: string) {
-  const { from, to } = await findLatestActivityMonthBounds(userId);
+export async function getCategoryBreakdown(userId: string, anchor?: Date) {
+  const { from, to } = monthBoundsFor(anchor);
   const rows = await forUser(userId).transaction.groupBy({
     by: ["category"],
     where: { type: TxnType.DEBIT, transactionDate: { gte: from, lte: to } },
@@ -68,29 +61,45 @@ export async function getCategoryBreakdown(userId: string) {
     .sort((a: any, b: any) => b.amount - a.amount);
 }
 
-export async function getDailyTrend(userId: string, days = 30) {
-  // Anchor the 30-day window on the latest DEBIT so imported historical
-  // statements don't produce a flat chart (trend is debit-only).
-  const latestDebit = await prisma.transaction.findFirst({
-    where: { userId, type: TxnType.DEBIT },
-    orderBy: { transactionDate: "desc" },
-    select: { transactionDate: true },
-  });
-  const anchor = latestDebit?.transactionDate ?? new Date();
-  const start = fromZonedTime(startOfDay(subDays(toZonedTime(anchor, TZ), days - 1)), TZ);
+/**
+ * 30-day debit trend ending on the last day of the anchor's month (or today if
+ * anchor is the current month). Keeps the chart aligned with the KPI window.
+ */
+export async function getDailyTrend(userId: string, days = 30, anchor?: Date) {
+  const { to } = monthBoundsFor(anchor);
+  const now = new Date();
+  const end = anchor && to < now ? to : now;
+  const start = fromZonedTime(startOfDay(subDays(toZonedTime(end, TZ), days - 1)), TZ);
   const rows = await forUser(userId).transaction.findMany({
-    where: { type: TxnType.DEBIT, transactionDate: { gte: start, lte: anchor } },
+    where: { type: TxnType.DEBIT, transactionDate: { gte: start, lte: end } },
     select: { amount: true, transactionDate: true },
     orderBy: { transactionDate: "asc" },
   });
   const buckets = new Map<string, number>();
   for (let i = 0; i < days; i++) {
-    const d = startOfDay(subDays(toZonedTime(anchor, TZ), days - 1 - i));
+    const d = startOfDay(subDays(toZonedTime(end, TZ), days - 1 - i));
     buckets.set(d.toISOString().slice(0, 10), 0);
   }
   for (const r of rows) {
     const key = toZonedTime(r.transactionDate, TZ).toISOString().slice(0, 10);
-    buckets.set(key, (buckets.get(key) ?? 0) + Number(r.amount));
+    if (buckets.has(key)) buckets.set(key, (buckets.get(key) ?? 0) + Number(r.amount));
   }
   return Array.from(buckets.entries()).map(([date, amount]) => ({ date, amount }));
+}
+
+/** Distinct months that have at least one debit. Returns newest first. */
+export async function getMonthsWithActivity(userId: string): Promise<{ value: string; label: string }[]> {
+  const rows = await prisma.$queryRaw<{ month: Date }[]>`
+    SELECT DATE_TRUNC('month', "transactionDate" AT TIME ZONE 'Asia/Kolkata')::date AS month
+    FROM "Transaction"
+    WHERE "userId" = ${userId} AND "type" = 'DEBIT'
+    GROUP BY 1
+    ORDER BY 1 DESC
+  `;
+  return rows.map(r => {
+    const d = new Date(r.month);
+    const value = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+    const label = d.toLocaleDateString("en-IN", { month: "long", year: "numeric", timeZone: "UTC" });
+    return { value, label };
+  });
 }

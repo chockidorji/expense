@@ -10,10 +10,18 @@ type KpiData = {
   monthLabel?: string;
 };
 
-export default function KpiCards({ data }: { data: KpiData }) {
+export default function KpiCards({ data, currentMonth }: { data: KpiData; currentMonth?: { totalSpend: number; monthLabel: string } }) {
   const suffix = data.monthLabel ? ` · ${data.monthLabel}` : "";
+  const isSameMonth = currentMonth && data.monthLabel === currentMonth.monthLabel;
+  const showCurrentMonthCard = currentMonth && !isSameMonth;
   return (
-    <div className="grid gap-4 md:grid-cols-3">
+    <div className={`grid gap-4 ${showCurrentMonthCard ? "md:grid-cols-4" : "md:grid-cols-3"}`}>
+      {showCurrentMonthCard && (
+        <Card>
+          <CardHeader><CardTitle className="text-sm font-medium text-muted-foreground">Current month · {currentMonth.monthLabel}</CardTitle></CardHeader>
+          <CardContent><div className="text-3xl font-semibold">{fmt.format(currentMonth.totalSpend)}</div></CardContent>
+        </Card>
+      )}
       <Card>
         <CardHeader><CardTitle className="text-sm font-medium text-muted-foreground">Total spend{suffix}</CardTitle></CardHeader>
         <CardContent><div className="text-3xl font-semibold">{fmt.format(data.totalSpend)}</div></CardContent>

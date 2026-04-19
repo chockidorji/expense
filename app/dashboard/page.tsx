@@ -3,7 +3,13 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { getMonthKpis, getCategoryBreakdown, getDailyTrend } from "@/lib/dashboard";
+import {
+  getMonthKpis,
+  getCategoryBreakdown,
+  getDailyTrend,
+  getMonthsWithActivity,
+  parseMonthParam,
+} from "@/lib/dashboard";
 import KpiCards from "./kpi-cards";
 import CategoryPie from "./category-pie";
 import TrendLine from "./trend-line";
@@ -11,9 +17,20 @@ import TransactionTable from "./transaction-table";
 import AddTransaction from "./add-transaction";
 import SignOutButton from "./sign-out";
 import SyncButton from "./sync-button";
+import MonthSelector from "./month-selector";
 import { prisma } from "@/lib/db";
 
-export default async function DashboardPage() {
+function currentMonthValue(): string {
+  const now = new Date();
+  // Asia/Kolkata month key. Using en-CA gives yyyy-mm-dd style.
+  const fmt = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", timeZone: "Asia/Kolkata" });
+  const parts = fmt.formatToParts(now);
+  const y = parts.find(p => p.type === "year")?.value ?? "2026";
+  const m = parts.find(p => p.type === "month")?.value ?? "01";
+  return `${y}-${m}`;
+}
+
+export default async function DashboardPage({ searchParams }: { searchParams: { month?: string } }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/auth/signin");
   const userId = (session.user as any).id;
@@ -21,11 +38,31 @@ export default async function DashboardPage() {
     where: { userId, provider: "google" },
     select: { needsReauth: true },
   });
-  const [kpis, pie, trend] = await Promise.all([
-    getMonthKpis(userId),
-    getCategoryBreakdown(userId),
-    getDailyTrend(userId, 30),
+
+  const currentValue = currentMonthValue();
+  const selectedValue = searchParams.month ?? currentValue;
+  const selectedAnchor = parseMonthParam(selectedValue) ?? undefined;
+
+  const [kpis, currentKpis, pie, trend, monthsWithActivity] = await Promise.all([
+    getMonthKpis(userId, selectedAnchor),
+    getMonthKpis(userId),                 // no anchor = current IST month
+    getCategoryBreakdown(userId, selectedAnchor),
+    getDailyTrend(userId, 30, selectedAnchor),
+    getMonthsWithActivity(userId),
   ]);
+
+  // Build the selector options: current month always at top, then months with
+  // debits in descending order (may include current month already).
+  const seen = new Set<string>();
+  const options: { value: string; label: string }[] = [];
+  const pushIfNew = (o: { value: string; label: string }) => {
+    if (seen.has(o.value)) return;
+    seen.add(o.value);
+    options.push(o);
+  };
+  pushIfNew({ value: currentValue, label: currentKpis.monthLabel + " (current)" });
+  for (const m of monthsWithActivity) pushIfNew(m);
+
   return (
     <main className="mx-auto max-w-7xl p-6 space-y-6">
       <header className="flex items-center justify-between">
@@ -46,7 +83,13 @@ export default async function DashboardPage() {
           Gmail access expired. <a className="underline" href="/api/auth/signin/google">Reconnect</a>.
         </div>
       )}
-      <KpiCards data={kpis} />
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <MonthSelector options={options} defaultValue={currentValue} currentValue={selectedValue} />
+      </div>
+      <KpiCards
+        data={kpis}
+        currentMonth={{ totalSpend: currentKpis.totalSpend, monthLabel: currentKpis.monthLabel }}
+      />
       <div className="grid gap-6 lg:grid-cols-2">
         <CategoryPie data={pie} />
         <TrendLine data={trend} />
