@@ -4,6 +4,7 @@ import { detectBankAndParse, allBankSenderQuery } from "./parsers";
 import { normalizeMerchant, insertOrLog } from "./dedup";
 import { categorize } from "./categorizer";
 import { TxnSource } from "@prisma/client";
+import { refreshUpcomingForUser } from "./upcoming-sync";
 
 export type SyncResult = {
   userId: string;
@@ -75,6 +76,16 @@ export async function syncUserGmail(userId: string, newerThanDays = 1): Promise<
       if (out.status === "inserted") result.inserted++; else result.duplicates++;
     } catch (e) {
       result.errors.push(`msg ${m.id}: ${(e as Error).message}`);
+    }
+  }
+
+  // After each sync, refresh the user's upcoming-payment predictions so newly
+  // arrived transactions either close out a prediction or shift the cadence.
+  if (result.inserted > 0) {
+    try {
+      await refreshUpcomingForUser(userId);
+    } catch (e) {
+      result.errors.push(`upcoming refresh failed: ${(e as Error).message}`);
     }
   }
 

@@ -20,6 +20,7 @@ import BudgetStrip from "./budget-strip";
 import CategoryList from "./category-list";
 import ChartCarousel from "./chart-carousel";
 import RecentTxns from "./recent-txns";
+import UpcomingCard from "./upcoming-card";
 import AddTransaction, { AddTransactionFab } from "./add-transaction";
 import SignOutButton from "./sign-out";
 import SyncButton from "./sync-button";
@@ -121,6 +122,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
           <MonthSelector options={options} defaultValue={currentValue} currentValue={selectedValue} />
         </div>
         <KpiCards selected={kpis} current={currentKpis} />
+
+        <UpcomingCard />
 
         {/* Mobile stack */}
         <BudgetStrip rows={budgetRows} monthLabel={kpis.monthLabel} fromISO={fromISO} toISO={toISO} monthKey={selectedValue} />

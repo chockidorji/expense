@@ -1,14 +1,14 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Receipt, PiggyBank, Menu } from "lucide-react";
+import { LayoutDashboard, Receipt, CalendarClock, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const tabs = [
   { href: "/dashboard", label: "Home", icon: LayoutDashboard, match: (p: string) => p === "/dashboard" },
   { href: "/transactions", label: "Txns", icon: Receipt, match: (p: string) => p.startsWith("/transactions") },
-  { href: "/settings/budgets", label: "Budgets", icon: PiggyBank, match: (p: string) => p.startsWith("/settings/budgets") },
-  { href: "/settings", label: "More", icon: Menu, match: (p: string) => p === "/settings" || p.startsWith("/settings/categories") || p === "/upload" },
+  { href: "/upcoming", label: "Upcoming", icon: CalendarClock, match: (p: string) => p.startsWith("/upcoming") },
+  { href: "/settings", label: "More", icon: Menu, match: (p: string) => p === "/settings" || p.startsWith("/settings/") || p === "/upload" },
 ];
 
 export default function BottomNav() {
