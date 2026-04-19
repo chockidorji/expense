@@ -97,10 +97,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
       <div className="flex items-center justify-between flex-wrap gap-3">
         <MonthSelector options={options} defaultValue={currentValue} currentValue={selectedValue} />
       </div>
-      <KpiCards
-        data={kpis}
-        currentMonth={{ totalSpend: currentKpis.totalSpend, monthLabel: currentKpis.monthLabel }}
-      />
+      <KpiCards selected={kpis} current={currentKpis} />
       <div className="grid gap-6 lg:grid-cols-2">
         <CategoryPie data={pie} monthLabel={kpis.monthLabel} />
         <TrendLine data={trend} monthLabel={kpis.monthLabel} />

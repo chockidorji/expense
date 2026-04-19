@@ -10,33 +10,56 @@ type KpiData = {
   monthLabel?: string;
 };
 
-export default function KpiCards({ data, currentMonth }: { data: KpiData; currentMonth?: { totalSpend: number; monthLabel: string } }) {
-  const suffix = data.monthLabel ? ` · ${data.monthLabel}` : "";
-  const isSameMonth = currentMonth && data.monthLabel === currentMonth.monthLabel;
-  const showCurrentMonthCard = currentMonth && !isSameMonth;
+function KpiRow({ data }: { data: KpiData }) {
   return (
-    <div className={`grid gap-4 ${showCurrentMonthCard ? "md:grid-cols-4" : "md:grid-cols-3"}`}>
-      {showCurrentMonthCard && (
-        <Card>
-          <CardHeader><CardTitle className="text-sm font-medium text-muted-foreground">Current month · {currentMonth.monthLabel}</CardTitle></CardHeader>
-          <CardContent><div className="text-3xl font-semibold">{fmt.format(currentMonth.totalSpend)}</div></CardContent>
-        </Card>
-      )}
+    <div className="grid gap-4 md:grid-cols-3">
       <Card>
-        <CardHeader><CardTitle className="text-sm font-medium text-muted-foreground">Total spend{suffix}</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-sm font-medium text-muted-foreground">Total spend</CardTitle></CardHeader>
         <CardContent><div className="text-3xl font-semibold">{fmt.format(data.totalSpend)}</div></CardContent>
       </Card>
       <Card>
-        <CardHeader><CardTitle className="text-sm font-medium text-muted-foreground">Top category{suffix}</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-sm font-medium text-muted-foreground">Top category</CardTitle></CardHeader>
         <CardContent>
           <div className="text-3xl font-semibold capitalize">{data.topCategory ?? "—"}</div>
           {data.topCategory && <div className="text-sm text-muted-foreground">{fmt.format(data.topCategoryAmount)}</div>}
         </CardContent>
       </Card>
       <Card>
-        <CardHeader><CardTitle className="text-sm font-medium text-muted-foreground">Transactions{suffix}</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-sm font-medium text-muted-foreground">Transactions</CardTitle></CardHeader>
         <CardContent><div className="text-3xl font-semibold">{data.transactionCount}</div></CardContent>
       </Card>
+    </div>
+  );
+}
+
+export default function KpiCards({
+  selected,
+  current,
+}: {
+  selected: KpiData;
+  current: KpiData;
+}) {
+  const sameMonth = selected.monthLabel === current.monthLabel;
+
+  if (sameMonth) {
+    return (
+      <section className="space-y-2">
+        <h2 className="text-sm font-medium text-muted-foreground">Current month · {current.monthLabel}</h2>
+        <KpiRow data={current} />
+      </section>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <section className="space-y-2">
+        <h2 className="text-sm font-medium text-muted-foreground">Current month · {current.monthLabel}</h2>
+        <KpiRow data={current} />
+      </section>
+      <section className="space-y-2">
+        <h2 className="text-sm font-medium text-muted-foreground">Viewing · {selected.monthLabel}</h2>
+        <KpiRow data={selected} />
+      </section>
     </div>
   );
 }
