@@ -9,15 +9,45 @@ import { Badge } from "@/components/ui/badge";
 import { ALL_CATEGORIES } from "@/lib/categorizer";
 import { toast } from "sonner";
 
-type Row = { id: string; amount: string; transactionDate: string; merchant: string; category: string; type: "DEBIT" | "CREDIT"; source: "EMAIL" | "CSV" | "MANUAL" };
+type Row = {
+  id: string;
+  amount: string;
+  transactionDate: string;
+  merchant: string;
+  category: string;
+  type: "DEBIT" | "CREDIT";
+  source: "EMAIL" | "CSV" | "MANUAL";
+};
 
 const fmt = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 
-export default function TransactionTable() {
+export default function TransactionTable({
+  initialFrom,
+  initialTo,
+  monthLabel,
+}: {
+  initialFrom?: string;
+  initialTo?: string;
+  monthLabel?: string;
+} = {}) {
   const [rows, setRows] = useState<Row[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [filters, setFilters] = useState<{ category?: string; source?: string; minAmount?: string; maxAmount?: string; from?: string; to?: string }>({});
+  const [filters, setFilters] = useState<{
+    category?: string;
+    source?: string;
+    minAmount?: string;
+    maxAmount?: string;
+    from?: string;
+    to?: string;
+  }>({ from: initialFrom, to: initialTo });
+
+  // If the parent changes the anchor month (user flipped the selector) reset
+  // the from/to filter to the new month bounds. Explicit filter tweaks by the
+  // user win until the next month switch.
+  useEffect(() => {
+    setFilters(f => ({ ...f, from: initialFrom, to: initialTo }));
+  }, [initialFrom, initialTo]);
 
   async function load(reset = false) {
     setLoading(true);
@@ -27,7 +57,7 @@ export default function TransactionTable() {
     if (filters.minAmount) p.set("minAmount", filters.minAmount);
     if (filters.maxAmount) p.set("maxAmount", filters.maxAmount);
     if (filters.from) p.set("from", new Date(filters.from).toISOString());
-    if (filters.to) p.set("to", new Date(filters.to).toISOString());
+    if (filters.to) p.set("to", new Date(`${filters.to}T23:59:59+05:30`).toISOString());
     if (!reset && cursor) p.set("cursor", cursor);
     const r = await fetch(`/api/transactions?${p}`);
     const j = await r.json();
@@ -46,15 +76,32 @@ export default function TransactionTable() {
   }, []);
 
   async function updateCategory(id: string, category: string) {
-    const r = await fetch(`/api/transactions/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category }) });
+    const r = await fetch(`/api/transactions/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ category }),
+    });
     if (!r.ok) { toast.error("Failed to update category"); return; }
     setRows(rs => rs.map(row => row.id === id ? { ...row, category } : row));
     toast.success("Category updated");
   }
 
+  const clearDateFilter = () => setFilters(f => ({ ...f, from: undefined, to: undefined }));
+  const hasDateFilter = filters.from || filters.to;
+
   return (
     <Card>
-      <CardHeader><CardTitle>Transactions</CardTitle></CardHeader>
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between gap-2 flex-wrap">
+          <span>Transactions</span>
+          {monthLabel && hasDateFilter && (
+            <span className="text-xs font-normal text-muted-foreground flex items-center gap-2">
+              Filtered to {monthLabel}
+              <Button size="sm" variant="ghost" className="h-6 px-2" onClick={clearDateFilter}>Show all time</Button>
+            </span>
+          )}
+        </CardTitle>
+      </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-2 md:grid-cols-6">
           <Input type="date" value={filters.from ?? ""} onChange={e => setFilters(f => ({ ...f, from: e.target.value || undefined }))} placeholder="From" />
@@ -111,7 +158,7 @@ export default function TransactionTable() {
                 </TableRow>
               ))}
               {rows.length === 0 && !loading && (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No transactions. Add one from the top-right.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No transactions in this range.</TableCell></TableRow>
               )}
             </TableBody>
           </Table>

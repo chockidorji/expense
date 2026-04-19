@@ -43,6 +43,17 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
   const selectedValue = searchParams.month ?? currentValue;
   const selectedAnchor = parseMonthParam(selectedValue) ?? undefined;
 
+  // Compute the IST start/end-of-month as YYYY-MM-DD strings for the table's
+  // default date filter.
+  function monthBoundStrings(monthKey: string): { from: string; to: string } {
+    const [y, m] = monthKey.split("-").map(Number);
+    const first = `${y}-${String(m).padStart(2, "0")}-01`;
+    const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    const last = `${y}-${String(m).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+    return { from: first, to: last };
+  }
+  const monthBounds = monthBoundStrings(selectedValue);
+
   const [kpis, currentKpis, pie, trend, monthsWithActivity] = await Promise.all([
     getMonthKpis(userId, selectedAnchor),
     getMonthKpis(userId),                 // no anchor = current IST month
@@ -94,7 +105,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
         <CategoryPie data={pie} />
         <TrendLine data={trend} />
       </div>
-      <TransactionTable />
+      <TransactionTable
+        initialFrom={monthBounds.from}
+        initialTo={monthBounds.to}
+        monthLabel={kpis.monthLabel}
+      />
     </main>
   );
 }
