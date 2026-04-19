@@ -27,11 +27,11 @@ module.exports = {
     },
     {
       name: "expense-tracker-cron",
-      // tsx is a shell wrapper; running it via Node (pm2's default) crashes
-      // with a syntax error. Run the ESM CLI directly with node instead.
-      script: "scripts/run-cron.ts",
-      interpreter: "node",
-      interpreter_args: "--import=tsx/esm",
+      // Spawn tsx directly (its shell wrapper handles loader setup) so pm2's
+      // ProcessContainerFork doesn't create a require(esm) cycle with tsx/esm.
+      script: "node_modules/.bin/tsx",
+      args: "scripts/run-cron.ts",
+      interpreter: "none",
       instances: 1,
       exec_mode: "fork",
       env: { NODE_ENV: "production" },
