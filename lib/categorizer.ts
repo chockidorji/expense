@@ -28,7 +28,7 @@ export const CATEGORY_KEYWORDS: Record<string, string[]> = {
   // Place BEFORE personal — otherwise "upi send money" / "payment from phone"
   // in the narration would grab these into personal first.
   staff: [
-    "codemarks", "lham tashi",
+    "codemarks", "lham tashi", "payoneer",
   ],
   subscriptions: [
     "apple media services", "apple com bill", "google playstore", "google play",
@@ -38,7 +38,7 @@ export const CATEGORY_KEYWORDS: Record<string, string[]> = {
     "odoo", "paypal", "fiverr", "figma", "github",
     "go daddy", "godaddy", "supabase", "wordpress", "wpem",
     "thrivecart", "ownthestage", "runway pro", "skool com", "p skool",
-    "emudhra", "payoneer", "delhivery",
+    "emudhra", "delhivery",
     "replit", "cursor", "elegantthemes", "gumroad", "gamma app",
     "vercel", "notion", "linear app", "posthog", "stripe",
   ],
