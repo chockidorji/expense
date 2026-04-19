@@ -29,21 +29,33 @@ function ErrorToast() {
 
 export default function SignInPage() {
   return (
-    <main className="min-h-screen grid place-items-center p-6">
+    <main className="min-h-screen grid place-items-center p-6 pt-safe pb-[env(safe-area-inset-bottom)]">
       <Suspense fallback={null}>
         <ErrorToast />
       </Suspense>
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>Expense Tracker</CardTitle>
-          <CardDescription>Sign in with your Google account to get started.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button className="w-full" onClick={() => signIn("google", { callbackUrl: "/dashboard" })}>
-            Continue with Google
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="w-full max-w-sm space-y-6">
+        <div className="text-center space-y-2">
+          <div className="mx-auto h-14 w-14 rounded-2xl bg-foreground text-background grid place-items-center text-2xl font-semibold">
+            ₹
+          </div>
+          <h1 className="text-xl font-semibold">Expense Tracker</h1>
+          <p className="text-sm text-muted-foreground">Track your Indian bank transactions, one swipe away.</p>
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Sign in</CardTitle>
+            <CardDescription>Connect your Google account to sync transaction emails.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              className="w-full min-h-[44px]"
+              onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+            >
+              Continue with Google
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     </main>
   );
 }

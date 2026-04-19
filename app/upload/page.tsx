@@ -8,6 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { ChevronLeft } from "lucide-react";
+import MobileHeader from "@/components/mobile/mobile-header";
 
 type Preview = {
   token: string;
@@ -142,8 +145,16 @@ export default function UploadPage() {
   }
 
   return (
-    <main className="mx-auto max-w-4xl p-6 space-y-6">
-      <h1 className="text-2xl font-semibold">Import statement</h1>
+    <>
+      <MobileHeader title="Import statement" />
+      <main className="mx-auto max-w-4xl px-4 md:p-6 pt-4 md:pt-6 pb-6 space-y-6">
+        <Link
+          href="/settings"
+          className="md:hidden inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground cursor-pointer"
+        >
+          <ChevronLeft className="h-4 w-4" aria-hidden /> Settings
+        </Link>
+      <h1 className="hidden md:block text-2xl font-semibold">Import statement</h1>
 
       <Card>
         <CardHeader><CardTitle>1 · Choose file</CardTitle></CardHeader>
@@ -197,7 +208,7 @@ export default function UploadPage() {
                 </Select>
               </div>
 
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-3 grid-cols-1 md:grid-cols-2">
                 <div className="grid gap-1.5">
                   <Label>Date *</Label>
                   <Select value={mapping.date} onValueChange={v => setMapping(m => ({ ...m, date: v ?? "" }))}>
@@ -302,7 +313,7 @@ export default function UploadPage() {
                   </TableBody>
                 </Table>
               </div>
-              <Button className="mt-4" disabled={importing} onClick={onImport}>
+              <Button className="mt-4 w-full md:w-auto min-h-[44px]" disabled={importing} onClick={onImport}>
                 {importing ? "Importing..." : `Import ${preview.rowCount} rows`}
               </Button>
             </CardContent>
@@ -329,6 +340,7 @@ export default function UploadPage() {
           </CardContent>
         </Card>
       )}
-    </main>
+      </main>
+    </>
   );
 }
