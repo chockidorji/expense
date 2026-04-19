@@ -105,7 +105,8 @@ function detectHeaderRow(allRows: string[][]): number {
   return bestIdx;
 }
 
-const DATE_FORMATS = ["dd/MM/yyyy", "dd-MM-yyyy", "yyyy-MM-dd", "MM/dd/yyyy", "dd MMM yyyy", "dd/MM/yy", "dd-MM-yy"];
+// 2-digit year formats first — date-fns yyyy is lazy and mis-reads "25" as AD 25
+const DATE_FORMATS = ["dd/MM/yy", "dd-MM-yy", "dd/MM/yyyy", "dd-MM-yyyy", "yyyy-MM-dd", "MM/dd/yyyy", "dd MMM yyyy"];
 
 function parseAmount(raw: string | undefined | null): number | null {
   if (!raw) return null;

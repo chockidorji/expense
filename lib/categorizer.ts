@@ -14,7 +14,12 @@ import { forUser } from "./db";
 export const CATEGORY_KEYWORDS: Record<string, string[]> = {
   // Match first — self-transfers and fees are misleading if they fall to a
   // broader category like "shopping" or "bills" via substring.
-  transfer: ["upi lite", "add money", "wallet load", "self transfer"],
+  transfer: [
+    "upi lite", "add money", "wallet load", "self transfer",
+    "atw ", // HDFC ATM withdrawal narration
+    " tpt ", "-tpt-", // HDFC account-to-account self transfer
+    "chockey dorjee", // self-transfers to own name — safe for this user
+  ],
   fees: [
     "instaalert", "sms charg", "annual fee", "card annual", "dc intl pos",
     "pos txn dcc", "pos txn markup", "markup st",
@@ -26,6 +31,11 @@ export const CATEGORY_KEYWORDS: Record<string, string[]> = {
     "netflix", "spotify", "prime video", "hotstar", "youtube premium",
     "jiocinema", "sonyliv", "claude ai", "anthropic", "openai",
     "odoo", "paypal", "fiverr", "figma", "github",
+    "go daddy", "godaddy", "supabase", "wordpress", "wpem",
+    "thrivecart", "ownthestage", "runway pro", "skool com", "p skool",
+    "emudhra", "payoneer", "delhivery",
+    "replit", "cursor", "elegantthemes", "gumroad", "gamma app",
+    "vercel", "notion", "linear app", "posthog", "stripe",
   ],
   entertainment: [
     "bookmyshow", "cinemas", "tnz cinemas", "pvr", "inox",
@@ -39,18 +49,20 @@ export const CATEGORY_KEYWORDS: Record<string, string[]> = {
   food: [
     "swiggy", "zomato", "dominos", "mcdonalds", "starbucks", "restaurant",
     "cafe", "bakery", "kfc", "burger king", "pizza hut", "barbeque",
-    "kitchen", "cakery", "food", "dhaba", "biryani",
+    "kitchen", "cakery", "food", "dhaba", "biryani", "canteen",
   ],
   transport: [
     "uber", "ola", "rapido", "irctc", "petrol", "hpcl", "iocl",
     "indian oil", "bpcl", "metro", "parking", "toll", "fastag",
     "service station", "filling station", "filling s", "aastro filling",
     "highways management", "nhai",
+    "auto age", "auto agency", "capital auto", "garage", "mechanic",
   ],
   shopping: [
     "amazon", "flipkart", "myntra", "ajio", "meesho", "decathlon",
     "nykaa", "croma", "reliance digital", "zara", "h and m", " h m ",
     "stationery", "paul stationer",
+    "uniqlo", "thinking cap", "clothin", "apparel",
   ],
   bills: [
     "airtel", "jio ", "vodafone", "vi ", "bescom", "electricity",
@@ -58,6 +70,8 @@ export const CATEGORY_KEYWORDS: Record<string, string[]> = {
     "adani electricity", "bsnl", "department of power",
     "power distribution", "gas bill", "dth",
     "emi ", "loan emi", "chq s1", // HDFC EMI narration pattern
+    "goods and services t", "gst ", "non tax receipts", "ntrp",
+    "income tax", "advance tax", "e grass", "egrass",
   ],
   rent: ["rent", "housing", "landlord", "nobroker"],
   health: [
@@ -67,7 +81,8 @@ export const CATEGORY_KEYWORDS: Record<string, string[]> = {
   ],
   education: [
     "udemy", "coursera", "byjus", "unacademy", "school", "college",
-    "tuition", "canvapro",
+    "tuition", "canvapro", "canva pro",
+    "certifications", "certification", "usm certifications",
   ],
   travel: [
     "indigo", "air india", "vistara", "makemytrip", "goibibo", "cleartrip",
@@ -77,7 +92,14 @@ export const CATEGORY_KEYWORDS: Record<string, string[]> = {
   // containing "mr" in its narration still gets matched earlier if possible.
   personal: [
     "upi mr ", "upi ms ", "upi mrs ", "upi dr ",
-    "payment from phone", // broad safety net — UPI-*-PAYMENT FROM PHONE pattern
+    "payment from phone",   // UPI-<name>-PAYMENT FROM PHONE
+    "upi send money",       // UPI-<name>-UPI SEND MONEY
+    "neft dr",              // NEFT DR - named recipient
+    "imps ", "imps transaction", // IMPS to named recipient (hyphens stripped in normalization)
+    "pay to bharatpe me",   // merchant-to-personal QR payments
+    "sbibhim",              // SBI BHIM QR person payments
+    "verified paytm acc",   // Paytm QR person payments
+    "merchant 20qr",        // generic UPI merchant QR (often person-scale)
   ],
 };
 
