@@ -108,6 +108,9 @@ const BRAND_DISPLAY: Array<[RegExp | string, string]> = [
   ["meesho", "Meesho"],
   // Personal (user-specific)
   ["suprabha langthasa", "Suprabha Langthasa"],
+  // Staff payments
+  ["codemarks", "CodeMarks"],
+  ["lham tashi", "Lham Tashi"],
 ];
 
 const NOISE_SUFFIX_TOKENS = new Set([

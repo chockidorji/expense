@@ -25,6 +25,11 @@ export const CATEGORY_KEYWORDS: Record<string, string[]> = {
     "pos txn dcc", "pos txn markup", "markup st",
     "interest paid", "interest charged", "over limit", "late fee",
   ],
+  // Place BEFORE personal — otherwise "upi send money" / "payment from phone"
+  // in the narration would grab these into personal first.
+  staff: [
+    "codemarks", "lham tashi",
+  ],
   subscriptions: [
     "apple media services", "apple com bill", "google playstore", "google play",
     "hostinger", "bigrock", "directi", "endurance internatio",
