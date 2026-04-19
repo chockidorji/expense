@@ -12,13 +12,21 @@ const TZ = "Asia/Kolkata";
  * statement in April, you'll see Dec by default, not an empty April.
  */
 async function findLatestActivityMonthBounds(userId: string): Promise<{ from: Date; to: Date; label: Date }> {
-  const latest = await prisma.transaction.findFirst({
+  // Anchor on the latest DEBIT since the dashboard KPIs / pie are debit-only.
+  // A lone CREDIT row (e.g. Jan 1 interest credit) shouldn't flip the default
+  // month to one that has zero actual spending.
+  const latestDebit = await prisma.transaction.findFirst({
+    where: { userId, type: TxnType.DEBIT },
+    orderBy: { transactionDate: "desc" },
+    select: { transactionDate: true },
+  });
+  const latestAny = latestDebit ?? await prisma.transaction.findFirst({
     where: { userId },
     orderBy: { transactionDate: "desc" },
     select: { transactionDate: true },
   });
 
-  const anchor = latest?.transactionDate ?? new Date();
+  const anchor = latestAny?.transactionDate ?? new Date();
   const istAnchor = toZonedTime(anchor, TZ);
   const monthStartIst = startOfMonth(istAnchor);
   const monthEndIst = endOfMonth(istAnchor);
@@ -61,14 +69,14 @@ export async function getCategoryBreakdown(userId: string) {
 }
 
 export async function getDailyTrend(userId: string, days = 30) {
-  // Anchor the 30-day window on the latest transaction so imported historical
-  // statements don't produce a flat chart.
-  const latest = await prisma.transaction.findFirst({
-    where: { userId },
+  // Anchor the 30-day window on the latest DEBIT so imported historical
+  // statements don't produce a flat chart (trend is debit-only).
+  const latestDebit = await prisma.transaction.findFirst({
+    where: { userId, type: TxnType.DEBIT },
     orderBy: { transactionDate: "desc" },
     select: { transactionDate: true },
   });
-  const anchor = latest?.transactionDate ?? new Date();
+  const anchor = latestDebit?.transactionDate ?? new Date();
   const start = fromZonedTime(startOfDay(subDays(toZonedTime(anchor, TZ), days - 1)), TZ);
   const rows = await forUser(userId).transaction.findMany({
     where: { type: TxnType.DEBIT, transactionDate: { gte: start, lte: anchor } },
