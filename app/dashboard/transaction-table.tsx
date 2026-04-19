@@ -131,8 +131,8 @@ export default function TransactionTable({
               <TableRow>
                 <TableHead>Date</TableHead>
                 <TableHead>Merchant</TableHead>
-                <TableHead>Category</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
+                <TableHead>Category</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Source</TableHead>
               </TableRow>
@@ -142,6 +142,9 @@ export default function TransactionTable({
                 <TableRow key={r.id}>
                   <TableCell>{new Date(r.transactionDate).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</TableCell>
                   <TableCell>{r.merchant}</TableCell>
+                  <TableCell className={`text-right tabular-nums ${r.type === "DEBIT" ? "" : "text-green-600"}`}>
+                    {r.type === "DEBIT" ? "-" : "+"}{fmt.format(Number(r.amount))}
+                  </TableCell>
                   <TableCell>
                     <Select value={r.category} onValueChange={(v: any) => v && updateCategory(r.id, v)}>
                       <SelectTrigger className="h-8 w-40"><SelectValue /></SelectTrigger>
@@ -149,9 +152,6 @@ export default function TransactionTable({
                         {ALL_CATEGORIES.map(c => <SelectItem key={c} value={c} className="capitalize">{c}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                  </TableCell>
-                  <TableCell className={`text-right tabular-nums ${r.type === "DEBIT" ? "" : "text-green-600"}`}>
-                    {r.type === "DEBIT" ? "-" : "+"}{fmt.format(Number(r.amount))}
                   </TableCell>
                   <TableCell>{r.type}</TableCell>
                   <TableCell><Badge variant="outline">{r.source}</Badge></TableCell>

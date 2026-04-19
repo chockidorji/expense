@@ -54,11 +54,22 @@ export async function getMonthKpis(userId: string, anchor?: Date) {
   const byCat = new Map<string, number>();
   for (const r of debits) byCat.set(r.category, (byCat.get(r.category) ?? 0) + Number(r.amount));
   const topCat = Array.from(byCat.entries()).sort((a, b) => b[1] - a[1])[0];
+
+  // Latest DEBIT in the window — shown as a secondary line under the txn count.
+  const latest = await forUser(userId).transaction.findFirst({
+    where: { type: TxnType.DEBIT, transactionDate: { gte: from, lte: to } },
+    orderBy: [{ transactionDate: "desc" }, { id: "desc" }],
+    select: { amount: true, merchant: true, transactionDate: true },
+  });
+
   return {
     totalSpend: total,
     topCategory: topCat?.[0] ?? null,
     topCategoryAmount: topCat?.[1] ?? 0,
     transactionCount: debits.length,
+    latestTxnAmount: latest ? Number(latest.amount) : null,
+    latestTxnMerchant: latest?.merchant ?? null,
+    latestTxnDate: latest?.transactionDate ?? null,
     monthLabel: label.toLocaleDateString("en-IN", { month: "long", year: "numeric", timeZone: TZ }),
   };
 }

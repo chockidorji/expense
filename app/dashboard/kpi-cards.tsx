@@ -7,8 +7,13 @@ type KpiData = {
   topCategory: string | null;
   topCategoryAmount: number;
   transactionCount: number;
+  latestTxnAmount?: number | null;
+  latestTxnMerchant?: string | null;
+  latestTxnDate?: Date | string | null;
   monthLabel?: string;
 };
+
+const dateFmt = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
 
 function KpiRow({ data }: { data: KpiData }) {
   return (
@@ -26,7 +31,15 @@ function KpiRow({ data }: { data: KpiData }) {
       </Card>
       <Card>
         <CardHeader><CardTitle className="text-sm font-medium text-muted-foreground">Transactions</CardTitle></CardHeader>
-        <CardContent><div className="text-3xl font-semibold">{data.transactionCount}</div></CardContent>
+        <CardContent>
+          <div className="text-3xl font-semibold">{data.transactionCount}</div>
+          {data.latestTxnAmount != null && (
+            <div className="text-sm text-muted-foreground">
+              Latest: {fmt.format(data.latestTxnAmount)}
+              {data.latestTxnDate && <span> · {dateFmt.format(new Date(data.latestTxnDate))}</span>}
+            </div>
+          )}
+        </CardContent>
       </Card>
     </div>
   );
