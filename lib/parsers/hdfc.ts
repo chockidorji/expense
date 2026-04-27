@@ -45,9 +45,20 @@ const CC_SPEND = new RegExp(
   String.raw`(?:spent|using[\s\S]{0,100}?for)\s+Rs\.?\s*([\d,]+(?:\.\d+)?)\s+at\s+([A-Z0-9 .&'/\-]+?)\s+on\s+` + DATE_RE,
   "i",
 );
-const CC_CARD_LAST4 = /(?:Credit Card )?ending\s+(?:XX)?(\d{4})/i;
+const CC_CARD_LAST4 = /(?:Credit Card |Debit Card )?ending\s+(?:in\s+)?(?:XX)?(\d{4})/i;
 
-// E-mandate registration is a NOTIFICATION, not a transaction — skip.
+// HDFC's modern debit/credit card POS alert (the "Rs.X debited via Debit Card **NNNN" subject):
+//   "Rs.3301.23 is debited from your HDFC Bank Debit Card ending 0161 at RUNWAY PRO PLAN on 27 Apr, 2026 at 14:37:14"
+//   "Rs.2843.35 is debited from your HDFC Bank Debit Card ending 0161 at HEYGEN TECHNOLOGY INC. on 24 Apr, 2026 at ..."
+// Captures amount, card-last4, merchant, date.
+const CARD_DEBIT = new RegExp(
+  String.raw`Rs\.?\s*(?:INR\s+)?([\d,]+(?:\.\d+)?)\s+is\s+debited\s+from\s+your\s+HDFC\s+Bank\s+(?:Credit|Debit)\s+Card\s+ending\s+(?:in\s+)?(?:XX)?(\d{4})\s+at\s+([A-Z0-9 .&'/\-]+?)\s+on\s+` + DATE_RE,
+  "i",
+);
+
+// E-mandate registration / auto-payment-success is a NOTIFICATION — the
+// underlying card debit comes as a separate "Rs.X is debited..." alert.
+// Parsing the E-mandate email too would double-count, so skip it.
 const EMANDATE_REGISTRATION = /registered for E-mandate|Auto payment\)/i;
 
 export const hdfcParser: BankParser = {
@@ -128,6 +139,18 @@ export const hdfcParser: BankParser = {
       const d = parseFlexibleDate(date);
       if (d) {
         const card = text.match(CC_CARD_LAST4)?.[1];
+        return { amount: num(amt), type: "DEBIT", transactionDate: d, merchant: clean(merchant), bankAccount: card, bank: "HDFC" };
+      }
+    }
+
+    // Modern HDFC card-POS alert ("Rs.X is debited from your HDFC Bank Debit
+    // Card ending NNNN at MERCHANT on DATE") — this is the dominant format
+    // for Visa/Mastercard POS spend in 2026+.
+    m = text.match(CARD_DEBIT);
+    if (m) {
+      const [, amt, card, merchant, date] = m;
+      const d = parseFlexibleDate(date);
+      if (d) {
         return { amount: num(amt), type: "DEBIT", transactionDate: d, merchant: clean(merchant), bankAccount: card, bank: "HDFC" };
       }
     }

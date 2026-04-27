@@ -1,7 +1,8 @@
 import { parse as parseDate, isValid } from "date-fns";
 import { fromZonedTime } from "date-fns-tz";
 
-// Accept: 06-03-26, 13-FEB-2026, 15-04-2026, 15/04/2026, 13-Feb-2026, Apr 15, 2026, 15Apr24
+// Accept: 06-03-26, 13-FEB-2026, 15-04-2026, 15/04/2026, 13-Feb-2026,
+//         Apr 15, 2026, 15Apr24, 27 Apr, 2026, 27 Apr 2026
 export const DATE_FORMATS: string[] = [
   "dd-MM-yy",
   "dd-MMM-yyyy",
@@ -10,11 +11,16 @@ export const DATE_FORMATS: string[] = [
   "dd-LLL-yyyy",
   "MMM dd, yyyy",
   "ddMMMyy",
+  "dd MMM, yyyy",  // 27 Apr, 2026  ← HDFC Debit Card alerts
+  "dd MMM yyyy",   // 27 Apr 2026
+  "dd LLL, yyyy",
+  "dd LLL yyyy",
 ];
 
 // Raw regex fragment that matches the broadly-supported date tokens.
-// Examples: 06-03-26, 13-FEB-2026, 15-04-2026, 15/04/2026, Apr 15, 2026, 15Apr24
-export const DATE_RE = String.raw`(\d{1,2}[-\/][A-Za-z0-9]{2,4}[-\/]\d{2,4}|[A-Za-z]{3}\s+\d{1,2},\s*\d{4}|\d{1,2}[A-Za-z]{3}\d{2,4})`;
+// Examples: 06-03-26, 13-FEB-2026, 15-04-2026, 15/04/2026, Apr 15, 2026,
+//           15Apr24, 27 Apr, 2026, 27 Apr 2026
+export const DATE_RE = String.raw`(\d{1,2}[-\/][A-Za-z0-9]{2,4}[-\/]\d{2,4}|[A-Za-z]{3}\s+\d{1,2},\s*\d{4}|\d{1,2}[A-Za-z]{3}\d{2,4}|\d{1,2}\s+[A-Za-z]{3},?\s*\d{2,4})`;
 
 export function parseFlexibleDate(raw: string): Date | null {
   const trimmed = raw.trim();
