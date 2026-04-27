@@ -41,6 +41,7 @@ export const CATEGORY_KEYWORDS: Record<string, string[]> = {
     "emudhra", "delhivery",
     "replit", "cursor", "elegantthemes", "gumroad", "gamma app",
     "vercel", "notion", "linear app", "posthog", "stripe",
+    "heygen", "elevenlabs", "synthesia", "midjourney", "leonardo ai",
   ],
   entertainment: [
     "bookmyshow", "cinemas", "tnz cinemas", "pvr", "inox",
