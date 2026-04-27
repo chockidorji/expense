@@ -39,7 +39,7 @@ export const authOptions: NextAuthOptions = {
       try {
         await prisma.account.update({
           where: { provider_providerAccountId: { provider: account.provider, providerAccountId: account.providerAccountId } },
-          data,
+          data: { ...data, needsReauth: false },
         });
       } catch (err) {
         // Rollback: the Prisma adapter already inserted the row with PLAINTEXT tokens.
@@ -50,6 +50,37 @@ export const authOptions: NextAuthOptions = {
           where: { provider_providerAccountId: { provider: account.provider, providerAccountId: account.providerAccountId } },
         }).catch(delErr => console.error("[auth] rollback delete failed", delErr));
         throw err;
+      }
+    },
+
+    /**
+     * Fires on EVERY successful sign-in (including re-auth with the same
+     * Google account). `linkAccount` above only fires on first-time linking,
+     * so re-auth flows would otherwise:
+     *   1. Leave the new Google tokens plaintext on disk (the Prisma adapter
+     *      writes them as-received).
+     *   2. Never clear the `needsReauth` flag set by gmail-sync after a
+     *      previous invalid_grant — so the dashboard banner sticks even
+     *      though the user just reconnected.
+     *
+     * We encrypt the fresh tokens in-place and clear `needsReauth` here.
+     */
+    async signIn({ account }) {
+      if (!account || account.provider !== "google") return;
+      const data: Record<string, unknown> = { needsReauth: false };
+      if (account.refresh_token) data.refresh_token = encrypt(account.refresh_token);
+      if (account.access_token) data.access_token = encrypt(account.access_token);
+      try {
+        await prisma.account.update({
+          where: { provider_providerAccountId: { provider: account.provider, providerAccountId: account.providerAccountId } },
+          data,
+        });
+      } catch (err) {
+        // P2025 = row doesn't exist yet (first sign-in). linkAccount handles
+        // that path. Other errors are real and should be logged.
+        if (!(err as { code?: string }).code || (err as { code?: string }).code !== "P2025") {
+          console.error("[auth] failed to refresh tokens / clear needsReauth on signIn", err);
+        }
       }
     },
   },
