@@ -20,6 +20,20 @@ const UPI_CREDIT = new RegExp(
   "i",
 );
 
+// IMPS / NEFT / RTGS outgoing transfer:
+//   "INR 1,00,000.00 has been debited from your account ending xxxxxxxxxx5470
+//    on 29-04-26 and credited to the account ending xxxxxxxxxx1349 via IMPS."
+// Bank doesn't include the beneficiary name — only the masked account number,
+// so the merchant is synthesised as "<CHANNEL> to A/c xxxx<last4>". The user
+// can map that → real merchant via the override system.
+const IMPS_NEFT_DEBIT = new RegExp(
+  String.raw`(?:Rs\.?\s*)?(?:INR\s+)?([\d,]+(?:\.\d+)?)\s+has been debited from your account ending\s+x*(\d{4})\s+on\s+` +
+    DATE_RE +
+    String.raw`\s+and credited to (?:the\s+)?account ending\s+x*(\d{4})\s+via\s+(IMPS|NEFT|RTGS)`,
+  "i",
+);
+const IMPS_NEFT_REF = /(?:IMPS|NEFT|RTGS)\s+Reference\s+No\.?:?\s*([A-Z0-9]+)/i;
+
 // SI / merchant-linked debit: "Rs. INR 10,988.21 is deducted from your account ending XX5470 and added to ME DC SI ... CLAUDE.AI SUBSCRIPTION account on 13-FEB-2026"
 const SI_DEBIT = new RegExp(
   String.raw`Rs\.?\s*(?:INR\s+)?([\d,]+(?:\.\d+)?)\s+is deducted from your account ending\s+(?:XX)?(\d{4})\s+and added to\s+([\s\S]+?)\s+account on\s+` + DATE_RE,
@@ -100,6 +114,24 @@ export const hdfcParser: BankParser = {
           transactionDate: d,
           merchant: clean(payerName || vpa),
           bankAccount: acc,
+          referenceNumber: ref,
+          bank: "HDFC",
+        };
+      }
+    }
+
+    m = text.match(IMPS_NEFT_DEBIT);
+    if (m) {
+      const [, amt, srcAcc, date, dstAcc, channel] = m;
+      const d = parseFlexibleDate(date);
+      if (d) {
+        const ref = text.match(IMPS_NEFT_REF)?.[1];
+        return {
+          amount: num(amt),
+          type: "DEBIT",
+          transactionDate: d,
+          merchant: `${channel.toUpperCase()} to A/c xxxx${dstAcc}`,
+          bankAccount: srcAcc,
           referenceNumber: ref,
           bank: "HDFC",
         };
