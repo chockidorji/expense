@@ -52,11 +52,19 @@ const CREDIT_ACC_SIMPLE = new RegExp(
   "i",
 );
 
+// Card-descriptor character class — international card networks pass through
+// merchant strings with messy punctuation: PayPal/Stripe use "*" as a separator
+// ("PAYPAL *Apify"), invoices include "#", branded names mix case ("Apify"),
+// and aggregators use "+", "_", ":", "()". Stay strict enough that " on "
+// outside the merchant still serves as the date boundary. The `i` flag means
+// A-Z covers a-z too.
+const CARD_MERCHANT_CHARS = String.raw`[A-Z0-9 .,&'*#+_:()/\-]`;
+
 // Credit-card spend. Two phrasings:
 //  - "You've spent Rs 450.00 at SWIGGY on 15-04-2026"
 //  - "Thank you for using your HDFC Bank Credit Card ending 1234 for Rs 450.00 at SWIGGY on 15-04-2026"
 const CC_SPEND = new RegExp(
-  String.raw`(?:spent|using[\s\S]{0,100}?for)\s+Rs\.?\s*([\d,]+(?:\.\d+)?)\s+at\s+([A-Z0-9 .&'/\-]+?)\s+on\s+` + DATE_RE,
+  String.raw`(?:spent|using[\s\S]{0,100}?for)\s+Rs\.?\s*([\d,]+(?:\.\d+)?)\s+at\s+(${CARD_MERCHANT_CHARS}+?)\s+on\s+` + DATE_RE,
   "i",
 );
 const CC_CARD_LAST4 = /(?:Credit Card |Debit Card )?ending\s+(?:in\s+)?(?:XX)?(\d{4})/i;
@@ -64,9 +72,10 @@ const CC_CARD_LAST4 = /(?:Credit Card |Debit Card )?ending\s+(?:in\s+)?(?:XX)?(\
 // HDFC's modern debit/credit card POS alert (the "Rs.X debited via Debit Card **NNNN" subject):
 //   "Rs.3301.23 is debited from your HDFC Bank Debit Card ending 0161 at RUNWAY PRO PLAN on 27 Apr, 2026 at 14:37:14"
 //   "Rs.2843.35 is debited from your HDFC Bank Debit Card ending 0161 at HEYGEN TECHNOLOGY INC. on 24 Apr, 2026 at ..."
+//   "Rs.2889.17 is debited from your HDFC Bank Debit Card ending 9188 at PAYPAL *Apify inv#2026 on 03 May, 2026 at ..."
 // Captures amount, card-last4, merchant, date.
 const CARD_DEBIT = new RegExp(
-  String.raw`Rs\.?\s*(?:INR\s+)?([\d,]+(?:\.\d+)?)\s+is\s+debited\s+from\s+your\s+HDFC\s+Bank\s+(?:Credit|Debit)\s+Card\s+ending\s+(?:in\s+)?(?:XX)?(\d{4})\s+at\s+([A-Z0-9 .&'/\-]+?)\s+on\s+` + DATE_RE,
+  String.raw`Rs\.?\s*(?:INR\s+)?([\d,]+(?:\.\d+)?)\s+is\s+debited\s+from\s+your\s+HDFC\s+Bank\s+(?:Credit|Debit)\s+Card\s+ending\s+(?:in\s+)?(?:XX)?(\d{4})\s+at\s+(${CARD_MERCHANT_CHARS}+?)\s+on\s+` + DATE_RE,
   "i",
 );
 
