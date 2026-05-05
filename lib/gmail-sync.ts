@@ -51,7 +51,28 @@ export async function syncUserGmail(userId: string, newerThanDays = 1): Promise<
     );
     if (isInvalidGrant || isInsufficientScope) {
       const account = await prisma.account.findFirst({ where: { userId, provider: "google" } });
-      if (account) await prisma.account.update({ where: { id: account.id }, data: { needsReauth: true } });
+      if (account) {
+        const update: Record<string, unknown> = { needsReauth: true };
+        // For the insufficient_scope case the DB-stored scope can be stale —
+        // it was written when gmail.readonly WAS granted, but the live token
+        // has since lost it. Overwrite scope with what Google's tokeninfo
+        // actually returns now, so the dashboard banner can render the
+        // specific "tick the Gmail box" copy instead of generic "expired".
+        if (isInsufficientScope) {
+          try {
+            const { decrypt } = await import("./crypto");
+            const accessTok = decrypt(account.access_token!);
+            const r = await fetch("https://oauth2.googleapis.com/tokeninfo?access_token=" + encodeURIComponent(accessTok));
+            if (r.ok) {
+              const j: { scope?: string } = await r.json();
+              if (typeof j.scope === "string") update.scope = j.scope;
+            }
+          } catch (probeErr) {
+            console.warn("[gmail-sync] tokeninfo probe failed", probeErr);
+          }
+        }
+        await prisma.account.update({ where: { id: account.id }, data: update });
+      }
       result.errors.push(isInsufficientScope
         ? "insufficient_scope — gmail.readonly missing, needs reauth"
         : "invalid_grant — needs reauth");
