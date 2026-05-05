@@ -13,5 +13,8 @@ export type ParsedTransaction = {
 export interface BankParser {
   name: Bank;
   senderPatterns: RegExp[];
-  parse(input: { subject: string; plainText: string; htmlText: string; fromHeader: string }): ParsedTransaction | null;
+  // emailDate: header `Date:` from the Gmail message — used as a fallback for
+  // alert formats where the bank doesn't include the transaction date in the
+  // body (e.g. HDFC's "Transfer to payee … via Online Banking" alert).
+  parse(input: { subject: string; plainText: string; htmlText: string; fromHeader: string; emailDate?: Date }): ParsedTransaction | null;
 }

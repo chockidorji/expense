@@ -1,0 +1,4 @@
+From: HDFC Bank InstaAlerts <alerts@hdfcbank.bank.in>
+Subject: View: Account update for your HDFC Bank A/c
+
+HDFC BANK --> Dear Customer, Greetings from HDFC Bank! Rs.INR 1,00,000.00 has been successfully added to your account ending XX5470 from XXXXXXXXXX1974-TPT-HDFCC93C5664AF05-CHOCKEY DORJEE on 05-MAY-2026. The available balance in your account is Rs. INR 1,99,350.30 The balance in the account does not include uncleared cheque amount, if any.

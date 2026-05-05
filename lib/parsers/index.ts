@@ -7,7 +7,7 @@ import { kotakParser } from "./kotak";
 
 export const PARSERS: BankParser[] = [hdfcParser, sbiParser, iciciParser, axisParser, kotakParser];
 
-export function detectBankAndParse(input: { subject: string; plainText: string; htmlText: string; fromHeader: string }): ParsedTransaction | null {
+export function detectBankAndParse(input: { subject: string; plainText: string; htmlText: string; fromHeader: string; emailDate?: Date }): ParsedTransaction | null {
   for (const p of PARSERS) {
     if (p.senderPatterns.some(re => re.test(input.fromHeader))) {
       const result = p.parse(input);

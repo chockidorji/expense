@@ -79,6 +79,36 @@ const CARD_DEBIT = new RegExp(
   "i",
 );
 
+// ATM withdrawal alert (debit card cash withdrawal):
+//   "Thank you for using your HDFC Bank Debit Card ending 9188 for ATM
+//    withdrawal for Rs 9542.15 in SAMUT PRAKAN at BOOTH FX AIRPORT 1712 on
+//    05-05-2026 04:32:47"
+// Captures: card-last4, amount, location/city, ATM name, date.
+const ATM_WITHDRAWAL = new RegExp(
+  String.raw`HDFC Bank Debit Card ending\s+(?:in\s+)?(?:XX)?(\d{4})\s+for ATM withdrawal\s+for\s+Rs\.?\s*(?:INR\s+)?([\d,]+(?:\.\d+)?)\s+in\s+(${CARD_MERCHANT_CHARS}+?)\s+at\s+(${CARD_MERCHANT_CHARS}+?)\s+on\s+` + DATE_RE,
+  "i",
+);
+
+// Online-Banking transfer DEBIT (no date in body — falls back to email Date header):
+//   "Rs. 100000 has been deducted from your Account No. ending in XX1974 for
+//    a Transfer to payee chocki technologies via HDFC Bank Online Banking"
+// Captures: amount, source-account-last4, payee.
+const OB_TRANSFER_DEBIT = new RegExp(
+  String.raw`Rs\.?\s*(?:INR\s+)?([\d,]+(?:\.\d+)?)\s+has been deducted from your Account No\.?\s+ending in\s+(?:XX)?(\d{4})\s+for a Transfer to payee\s+([\s\S]+?)\s+via HDFC Bank Online Banking`,
+  "i",
+);
+
+// TPT credit (the credit-side alert of an account-to-account transfer; pairs
+// with the OB_TRANSFER_DEBIT or another transfer):
+//   "Rs.INR 1,00,000.00 has been successfully added to your account ending
+//    XX5470 from XXXXXXXXXX1974-TPT-HDFCC93C5664AF05-CHOCKEY DORJEE on
+//    05-MAY-2026"
+// Captures: amount, dest-account-last4, source-desc, date.
+const TPT_CREDIT = new RegExp(
+  String.raw`Rs\.?\s*(?:INR\s+)?([\d,]+(?:\.\d+)?)\s+has been successfully added to your account ending\s+(?:XX)?(\d{4})\s+from\s+([\s\S]+?)\s+on\s+` + DATE_RE,
+  "i",
+);
+
 // E-mandate registration / auto-payment-success is a NOTIFICATION — the
 // underlying card debit comes as a separate "Rs.X is debited..." alert.
 // Parsing the E-mandate email too would double-count, so skip it.
@@ -87,7 +117,7 @@ const EMANDATE_REGISTRATION = /registered for E-mandate|Auto payment\)/i;
 export const hdfcParser: BankParser = {
   name: "HDFC",
   senderPatterns: SENDER,
-  parse({ plainText, htmlText, subject }) {
+  parse({ plainText, htmlText, subject, emailDate }) {
     const body = preparseBody(plainText, htmlText);
     const text = [subject, body].filter(Boolean).join("\n");
 
@@ -194,6 +224,67 @@ export const hdfcParser: BankParser = {
       if (d) {
         return { amount: num(amt), type: "DEBIT", transactionDate: d, merchant: clean(merchant), bankAccount: card, bank: "HDFC" };
       }
+    }
+
+    // ATM cash withdrawal — placed AFTER CARD_DEBIT because both share the
+    // "HDFC Bank Debit Card ending NNNN" lead-in. ATM_WITHDRAWAL further
+    // requires "for ATM withdrawal", so wins only on actual ATM alerts.
+    m = text.match(ATM_WITHDRAWAL);
+    if (m) {
+      const [, card, amt, location, atmName, date] = m;
+      const d = parseFlexibleDate(date);
+      if (d) {
+        return {
+          amount: num(amt),
+          type: "DEBIT",
+          transactionDate: d,
+          merchant: `ATM Withdrawal — ${clean(atmName)}, ${clean(location)}`,
+          bankAccount: card,
+          bank: "HDFC",
+        };
+      }
+    }
+
+    // TPT credit (paired with OB_TRANSFER_DEBIT, but appears as a SEPARATE
+    // email on the destination side). Routes to "transfer" via categorizer.
+    m = text.match(TPT_CREDIT);
+    if (m) {
+      const [, amt, dstAcc, sourceDesc, date] = m;
+      const d = parseFlexibleDate(date);
+      if (d) {
+        // sourceDesc looks like "XXXXXXXXXX1974-TPT-HDFCC93C5664AF05-CHOCKEY DORJEE"
+        // — pull the leading account-last4 if present so the merchant reads
+        // "Transfer from A/c xxxx1974" (otherwise fall back to raw desc).
+        const srcAccMatch = sourceDesc.match(/X+(\d{4})/);
+        const merchant = srcAccMatch
+          ? `Transfer from A/c xxxx${srcAccMatch[1]}`
+          : `Transfer: ${clean(sourceDesc).slice(0, 80)}`;
+        return {
+          amount: num(amt),
+          type: "CREDIT",
+          transactionDate: d,
+          merchant,
+          bankAccount: dstAcc,
+          bank: "HDFC",
+        };
+      }
+    }
+
+    // Online-Banking transfer DEBIT — body has no date, fall back to email
+    // header Date. (Last in the chain so any pattern with a real body date
+    // wins over this.)
+    m = text.match(OB_TRANSFER_DEBIT);
+    if (m) {
+      const [, amt, srcAcc, payee] = m;
+      const d = emailDate ?? new Date();
+      return {
+        amount: num(amt),
+        type: "DEBIT",
+        transactionDate: d,
+        merchant: `Transfer to ${clean(payee).slice(0, 80)}`,
+        bankAccount: srcAcc,
+        bank: "HDFC",
+      };
     }
 
     return null;

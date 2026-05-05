@@ -16,9 +16,12 @@ export const CATEGORY_KEYWORDS: Record<string, string[]> = {
   // broader category like "shopping" or "bills" via substring.
   transfer: [
     "upi lite", "add money", "wallet load", "self transfer",
-    "atw ", // HDFC ATM withdrawal narration
+    "atw ", // HDFC ATM withdrawal narration (CSV statement format)
+    "atm withdrawal", // HDFC ATM withdrawal email-alert merchant
     " tpt ", "-tpt-", // HDFC account-to-account self transfer
+    "transfer from a c", "transfer to chocki technologies", // HDFC TPT email alerts
     "chockey dorjee", // self-transfers to own name — safe for this user
+    "chocki technologies", // user's own company — TPT/IMPS recipient
   ],
   fees: [
     "instaalert", "sms charg", "annual fee", "card annual", "dc intl pos",

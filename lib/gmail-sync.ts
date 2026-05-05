@@ -94,9 +94,11 @@ export async function syncUserGmail(userId: string, newerThanDays = 1): Promise<
       const payload = full.data.payload ?? undefined;
       const subject = getHeader(payload?.headers ?? undefined, "Subject");
       const fromHeader = getHeader(payload?.headers ?? undefined, "From");
+      const dateHeader = getHeader(payload?.headers ?? undefined, "Date");
+      const emailDate = dateHeader ? new Date(dateHeader) : undefined;
       const plainText = extractPlainText(payload);
       const htmlText = extractHtml(payload);
-      const parsed = detectBankAndParse({ subject, fromHeader, plainText, htmlText });
+      const parsed = detectBankAndParse({ subject, fromHeader, plainText, htmlText, emailDate: emailDate && !isNaN(emailDate.getTime()) ? emailDate : undefined });
       if (!parsed) { result.unrecognized++; continue; }
       result.parsed++;
       const merchantNormalized = normalizeMerchant(parsed.merchant);
