@@ -70,6 +70,11 @@ export const authOptions: NextAuthOptions = {
       const data: Record<string, unknown> = { needsReauth: false };
       if (account.refresh_token) data.refresh_token = encrypt(account.refresh_token);
       if (account.access_token) data.access_token = encrypt(account.access_token);
+      // Persist the actual scope Google granted on this re-auth. Without this,
+      // the DB keeps reporting the original scope from first link, masking the
+      // case where a re-auth lost gmail.readonly. (We saw this in production:
+      // DB showed gmail.readonly granted, but the live token only had profile.)
+      if (account.scope) data.scope = account.scope;
       try {
         await prisma.account.update({
           where: { provider_providerAccountId: { provider: account.provider, providerAccountId: account.providerAccountId } },

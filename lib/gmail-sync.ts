@@ -33,10 +33,28 @@ export async function syncUserGmail(userId: string, newerThanDays = 1): Promise<
   try {
     list = await gmail.users.messages.list({ userId: "me", q: allBankSenderQuery(newerThanDays), maxResults: 100 });
   } catch (e: any) {
-    if (e?.response?.data?.error === "invalid_grant" || e?.code === 401) {
+    // Two distinct re-auth conditions Google can throw:
+    //  - 401 / invalid_grant  → token revoked or refresh failed
+    //  - 403 insufficient_authentication_scopes → user re-authed but the new
+    //    grant no longer carries gmail.readonly (e.g. they removed the app at
+    //    myaccount.google.com/permissions, or the consent screen lost it).
+    // Both require user action; both should flip the dashboard banner.
+    const code = e?.code ?? e?.response?.status;
+    const oauthError = e?.response?.data?.error;
+    const reason = e?.errors?.[0]?.reason ?? e?.response?.data?.error?.errors?.[0]?.reason;
+    const msg = String(e?.message ?? "").toLowerCase();
+    const isInvalidGrant = oauthError === "invalid_grant" || code === 401;
+    const isInsufficientScope = code === 403 && (
+      reason === "ACCESS_TOKEN_SCOPE_INSUFFICIENT" ||
+      msg.includes("insufficient authentication scopes") ||
+      msg.includes("insufficient scope")
+    );
+    if (isInvalidGrant || isInsufficientScope) {
       const account = await prisma.account.findFirst({ where: { userId, provider: "google" } });
       if (account) await prisma.account.update({ where: { id: account.id }, data: { needsReauth: true } });
-      result.errors.push("invalid_grant — needs reauth");
+      result.errors.push(isInsufficientScope
+        ? "insufficient_scope — gmail.readonly missing, needs reauth"
+        : "invalid_grant — needs reauth");
       return result;
     }
     result.errors.push(`list error: ${e.message}`);
