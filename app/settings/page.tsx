@@ -15,8 +15,9 @@ export default async function SettingsPage() {
   const userId = (session.user as any).id;
   const account = await prisma.account.findFirst({
     where: { userId, provider: "google" },
-    select: { needsReauth: true },
+    select: { needsReauth: true, scope: true },
   });
+  const missingGmailScope = !!account?.needsReauth && !!account?.scope && !account.scope.includes("gmail.readonly");
 
   return (
     <>
@@ -37,11 +38,24 @@ export default async function SettingsPage() {
               </div>
             </div>
             {account?.needsReauth && (
-              <div className="mx-4 mb-4 rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-3 py-2 text-xs">
-                Gmail access expired.{" "}
-                <a className="underline font-medium" href="/api/auth/signin/google">
-                  Reconnect
-                </a>
+              <div className="mx-4 mb-4 rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-3 py-2 text-xs leading-relaxed">
+                {missingGmailScope ? (
+                  <>
+                    <strong>Gmail permission missing.</strong> Tick the
+                    Gmail / &ldquo;Read all resources and their metadata&rdquo;
+                    box on Google&apos;s consent screen — it starts unchecked.{" "}
+                    <a className="underline font-medium" href="/api/auth/signin/google">
+                      Reconnect
+                    </a>
+                  </>
+                ) : (
+                  <>
+                    Gmail access expired.{" "}
+                    <a className="underline font-medium" href="/api/auth/signin/google">
+                      Reconnect
+                    </a>
+                  </>
+                )}
               </div>
             )}
           </Card>

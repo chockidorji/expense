@@ -67,14 +67,26 @@ export const authOptions: NextAuthOptions = {
      */
     async signIn({ account }) {
       if (!account || account.provider !== "google") return;
-      const data: Record<string, unknown> = { needsReauth: false };
-      if (account.refresh_token) data.refresh_token = encrypt(account.refresh_token);
-      if (account.access_token) data.access_token = encrypt(account.access_token);
       // Persist the actual scope Google granted on this re-auth. Without this,
       // the DB keeps reporting the original scope from first link, masking the
       // case where a re-auth lost gmail.readonly. (We saw this in production:
       // DB showed gmail.readonly granted, but the live token only had profile.)
+      const grantedScope = account.scope ?? "";
+      // Gmail's gmail.readonly is a "sensitive" scope — Google shows it as an
+      // UNCHECKED box on the consent screen. If the user clicks Continue
+      // without ticking it, sign-in still succeeds but with profile-only
+      // scope. The cron then 403s every tick and the user thinks they're
+      // connected. Catch that partial-consent case here at the source: if the
+      // granted scope set lacks gmail.readonly, immediately re-flip the
+      // re-auth banner so the user retries with the right box checked.
+      const hasGmailReadonly = grantedScope.includes("gmail.readonly");
+      const data: Record<string, unknown> = { needsReauth: !hasGmailReadonly };
+      if (account.refresh_token) data.refresh_token = encrypt(account.refresh_token);
+      if (account.access_token) data.access_token = encrypt(account.access_token);
       if (account.scope) data.scope = account.scope;
+      if (!hasGmailReadonly) {
+        console.warn("[auth] signIn missing gmail.readonly scope — granted=%s", grantedScope);
+      }
       try {
         await prisma.account.update({
           where: { provider_providerAccountId: { provider: account.provider, providerAccountId: account.providerAccountId } },

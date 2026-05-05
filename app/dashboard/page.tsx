@@ -43,8 +43,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
   const userId = (session.user as any).id;
   const account = await prisma.account.findFirst({
     where: { userId, provider: "google" },
-    select: { needsReauth: true },
+    select: { needsReauth: true, scope: true },
   });
+  // If needsReauth fired because gmail.readonly is missing from the granted
+  // scope set (vs. a normal token expiry), surface that explicitly so the
+  // user knows what to do differently on retry.
+  const missingGmailScope = !!account?.needsReauth && !!account?.scope && !account.scope.includes("gmail.readonly");
 
   const currentValue = currentMonthValue();
   const selectedValue = searchParams.month ?? currentValue;
@@ -111,11 +115,26 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
         </header>
         {account?.needsReauth && (
           <div className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-3 text-sm">
-            Gmail access expired.{" "}
-            <a className="underline" href="/api/auth/signin/google">
-              Reconnect
-            </a>
-            .
+            {missingGmailScope ? (
+              <>
+                <strong>Gmail permission missing.</strong> When you reconnect,
+                make sure the <em>Read all resources and their metadata</em>{" "}
+                (Gmail) checkbox is ticked on Google&apos;s consent screen — it
+                starts unchecked.{" "}
+                <a className="underline" href="/api/auth/signin/google">
+                  Reconnect
+                </a>
+                .
+              </>
+            ) : (
+              <>
+                Gmail access expired.{" "}
+                <a className="underline" href="/api/auth/signin/google">
+                  Reconnect
+                </a>
+                .
+              </>
+            )}
           </div>
         )}
         <div className="flex items-center justify-center md:justify-between gap-3 flex-wrap">
