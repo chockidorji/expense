@@ -7,12 +7,19 @@ const SENDER = [
   /emailstatements\.hdfcbank@hdfcbank\.net/i,
 ];
 
-// UPI debit: "Rs.X has been debited from (your HDFC Bank)? account (ending)? XXXX to VPA xxx on DATE"
+// UPI debit. HDFC ships two phrasings of the same alert; both must parse:
+//  - Old: "Rs.X has been debited from (your HDFC Bank)? account (ending)? XXXX
+//          to VPA xxx PAYEE NAME on DATE"
+//  - New (2026-05+): "Rs.X is debited from your account ending XXXX towards
+//          VPA xxx (PAYEE NAME) on DATE"  ← parenthesised payee, mixed case
+// One regex with alternation so we don't double-maintain.
 const UPI_DEBIT = new RegExp(
-  String.raw`Rs\.?\s*([\d,]+(?:\.\d+)?)\s+has been debited from (?:your\s+)?(?:HDFC Bank\s+)?account\s+(?:ending\s+)?(?:X+)?(\d{4})\s+to\s+VPA\s+([A-Za-z0-9._@+/\-]+)(?:\s+([A-Z][A-Za-z0-9 .&'/+\-]{0,100}?))?\s+on\s+` + DATE_RE,
+  String.raw`Rs\.?\s*([\d,]+(?:\.\d+)?)\s+(?:has been |is )debited from (?:your\s+)?(?:HDFC Bank\s+)?account\s+(?:ending\s+)?(?:X+)?(\d{4})\s+(?:to|towards)\s+VPA\s+([A-Za-z0-9._@+/\-]+)(?:\s+\(([^)]+)\)|\s+([A-Z][A-Za-z0-9 .&'/+\-]{0,100}?))?\s+on\s+` + DATE_RE,
   "i",
 );
-const UPI_REF = /UPI transaction reference number is\s*([A-Z0-9]+)/i;
+// "UPI transaction reference number is 12345" (old) and
+// "UPI transaction reference no.: 12345" (new) — both seen in live alerts.
+const UPI_REF = /UPI transaction reference (?:number is|no\.?:?)\s*([A-Z0-9]+)/i;
 
 // UPI credit: "Rs. 4000.00 is successfully credited to your account **1974 by VPA 9436045075@ybl DAVID SANGTAM on 31-05-25"
 const UPI_CREDIT = new RegExp(
@@ -125,7 +132,7 @@ export const hdfcParser: BankParser = {
 
     let m = text.match(UPI_DEBIT);
     if (m) {
-      const [, amt, acc, vpa, payeeName, date] = m;
+      const [, amt, acc, vpa, parenPayee, barePayee, date] = m;
       const d = parseFlexibleDate(date);
       if (d) {
         const ref = text.match(UPI_REF)?.[1];
@@ -133,7 +140,7 @@ export const hdfcParser: BankParser = {
           amount: num(amt),
           type: "DEBIT",
           transactionDate: d,
-          merchant: clean(payeeName || vpa),
+          merchant: clean(parenPayee || barePayee || vpa),
           bankAccount: acc,
           referenceNumber: ref,
           bank: "HDFC",

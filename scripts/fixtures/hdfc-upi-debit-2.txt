@@ -1,0 +1,4 @@
+From: HDFC Bank InstaAlerts <alerts@hdfcbank.bank.in>
+Subject: ❗  You have done a UPI txn. Check details!
+
+Dear Customer, Greetings from HDFC Bank! Rs.17190.00 is debited from your account ending 1974 towards VPA langthasasuprabha@oksbi (SUPRABHA LANGTHASA) on 11-05-26. UPI transaction reference no.: 700341409568. If you did not authorize this transaction, please report it immediately by calling 18002586161 Or SMS BLOCK UPI to 7308080808. Warm Regards, HDFC Bank
