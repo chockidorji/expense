@@ -102,7 +102,13 @@ model Transaction {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, amount, transactionDate, merchantNormalized], name: "dedup_key")
+  // Dedup key includes referenceNumber so two distinct bank transactions
+  // that happen to share amount+date+merchant (e.g. paying the same vendor
+  // twice in one minute — the HKD TRAN XUAN THUONG ₹1,185.07 case from
+  // 10/05/2026) both land. For null refNo, Postgres treats NULL≠NULL so
+  // dedup still won't apply — that's fine because gmailMessageId is the
+  // primary dedup check anyway (also UNIQUE on this table).
+  @@unique([userId, amount, transactionDate, merchantNormalized, referenceNumber], name: "dedup_key")
   @@index([userId, transactionDate])
   @@index([userId, category])
 }
