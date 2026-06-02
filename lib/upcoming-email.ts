@@ -159,11 +159,18 @@ export async function scanUpcomingFromGmail(userId: string): Promise<{
     return result;
   }
 
+  // X-GM-RAW server-side filter to keep the fetched-body count manageable.
+  // Mirror the keyword + sender match we do client-side in isUpcomingCandidate.
+  const subjectQuery = SUBJECT_KEYWORDS.map((k) => `"${k}"`).join(" OR ");
+  const senderQuery = UPCOMING_SENDER_SUBSTRINGS.join(" OR ");
+  const gmailRaw = `(subject:(${subjectQuery}) OR from:(${senderQuery}))`;
+
   try {
     for await (const msg of fetchEmails({
       user: imapUser,
       appPassword: imapPassword,
       newerThanDays: 60,
+      gmailRaw,
       filter: isUpcomingCandidate,
     })) {
       result.fetched++;

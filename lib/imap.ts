@@ -38,6 +38,13 @@ export type FetchEmailsOpts = {
   user: string;
   appPassword: string;
   newerThanDays: number;
+  /**
+   * Optional Gmail X-GM-RAW search (e.g. "from:(a@b.com OR c@d.com)").
+   * When provided, filtering happens server-side and the inbox loop fetches
+   * 10–50× fewer message bodies. Falls back to client-side `filter` if the
+   * server doesn't support the X-GM-EXT-1 extension.
+   */
+  gmailRaw?: string;
   /** Return true to keep the email; false to skip. Applied after parse. */
   filter?: (msg: EmailMessage) => boolean;
 };
@@ -77,7 +84,21 @@ export async function* fetchEmails(opts: FetchEmailsOpts): AsyncGenerator<EmailM
     // unique constraint on Transaction).
     const since = new Date(Date.now() - (opts.newerThanDays + 1) * 86400e3);
 
-    const uids = (await client.search({ since }, { uid: true })) || [];
+    // Try Gmail-extension search first (server-side filter, dramatically
+    // faster). Fall back to plain SINCE if the server doesn't support it —
+    // imapflow throws MissingServerExtension in that case.
+    let uids: number[] = [];
+    if (opts.gmailRaw) {
+      try {
+        // imapflow's TS types lowercase this option name.
+        uids = (await client.search({ since, gmailraw: opts.gmailRaw }, { uid: true })) || [];
+      } catch (e) {
+        if ((e as { code?: string }).code !== "MissingServerExtension") throw e;
+        uids = (await client.search({ since }, { uid: true })) || [];
+      }
+    } else {
+      uids = (await client.search({ since }, { uid: true })) || [];
+    }
 
     for (const uid of uids) {
       const raw = await client.fetchOne(String(uid), { source: true }, { uid: true });
@@ -111,15 +132,21 @@ function matchesBankSender(fromHeader: string): boolean {
 
 /**
  * Stream Gmail bank-alert emails (HDFC, ICICI, etc.). Wraps `fetchEmails`
- * with a sender allowlist drawn from `lib/parsers`.
+ * with a sender allowlist drawn from `lib/parsers`. Uses X-GM-RAW for
+ * server-side filtering so we only fetch bank-alert bodies (10–50× faster
+ * than `SINCE` + client-side filter when the inbox has thousands of msgs).
  */
 export function fetchBankEmails(opts: {
   user: string;
   appPassword: string;
   newerThanDays: number;
 }): AsyncGenerator<EmailMessage> {
+  const senderQuery = `from:(${allBankSenderAddresses().join(" OR ")})`;
   return fetchEmails({
     ...opts,
+    gmailRaw: senderQuery,
+    // Belt-and-braces: keep the client-side filter even with X-GM-RAW, in
+    // case the server-side query is over-broad (it shouldn't be).
     filter: (msg) => matchesBankSender(msg.from),
   });
 }
