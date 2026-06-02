@@ -12,7 +12,7 @@
  */
 
 import { prisma } from "./db";
-import { getGmailClient, extractPlainText, extractHtml, getHeader } from "./gmail";
+import { fetchEmails, ImapAuthError, EmailMessage } from "./imap";
 import { normalizeMerchant } from "./dedup";
 import { UpcomingSource, UpcomingStatus, Prisma } from "@prisma/client";
 
@@ -27,17 +27,32 @@ type Match = {
   fromHeader: string;
 };
 
-// Gmail query — covers subscription renewals, CC statements and utility bills
-// without going out more than 60d. Adjust additions as new patterns emerge.
-const SEARCH_QUERY = [
-  "newer_than:60d",
-  // Keyword OR list — Gmail does AND between top-level terms otherwise.
-  "(",
-  "subject:(renewal OR renew OR \"due date\" OR \"payment due\" OR \"bill amount\" OR \"amount due\" OR \"statement\" OR \"invoice\" OR \"subscription\")",
-  "OR",
-  "from:(no_reply@email.apple.com OR *@hostinger.com OR *@netflix.com OR *@sonyliv.com OR *@jio.com OR *@airtel.com OR *@vodafone.com OR *@hdfcbank.net OR *@icicibank.com OR *@axisbank.com OR *@kotak.com)",
-  ")",
-].join(" ");
+// IMAP doesn't have Gmail's X-GM-RAW search; do the same OR-of-keywords/senders
+// match client-side. Cheaper to filter in JS — bank-alert volume is small.
+const SUBJECT_KEYWORDS = [
+  "renewal", "renew", "due date", "payment due", "bill amount",
+  "amount due", "statement", "invoice", "subscription",
+];
+const UPCOMING_SENDER_SUBSTRINGS = [
+  "no_reply@email.apple.com",
+  "@hostinger.com",
+  "@netflix.com",
+  "@sonyliv.com",
+  "@jio.com",
+  "@airtel.com",
+  "@vodafone.com",
+  "@hdfcbank.net",
+  "@icicibank.com",
+  "@axisbank.com",
+  "@kotak.com",
+];
+
+function isUpcomingCandidate(msg: EmailMessage): boolean {
+  const subj = msg.subject.toLowerCase();
+  if (SUBJECT_KEYWORDS.some((k) => subj.includes(k))) return true;
+  const from = msg.from.toLowerCase();
+  return UPCOMING_SENDER_SUBSTRINGS.some((s) => from.includes(s));
+}
 
 const MONTHS: Record<string, number> = {
   jan: 0, january: 0, feb: 1, february: 1, mar: 2, march: 2,
@@ -137,32 +152,24 @@ export async function scanUpcomingFromGmail(userId: string): Promise<{
   const newMatches: Match[] = [];
   const result = { fetched: 0, matched: 0, inserted: 0, skipped: 0, errors: [] as string[], newMatches };
 
-  const gmail = await getGmailClient(userId);
-  if (!gmail) {
-    result.errors.push("no gmail client");
+  const imapUser = process.env.IMAP_USER;
+  const imapPassword = process.env.IMAP_APP_PASSWORD;
+  if (!imapUser || !imapPassword) {
+    result.errors.push("IMAP creds not configured");
     return result;
   }
 
-  let list;
   try {
-    list = await gmail.users.messages.list({ userId: "me", q: SEARCH_QUERY, maxResults: 30 });
-  } catch (e) {
-    result.errors.push(`gmail list: ${(e as Error).message}`);
-    return result;
-  }
-  const ids = list.data.messages ?? [];
-  result.fetched = ids.length;
-
-  for (const { id } of ids) {
-    if (!id) continue;
-    try {
-      const msg = await gmail.users.messages.get({ userId: "me", id, format: "full" });
-      const payload = msg.data.payload ?? undefined;
-      const headers = payload?.headers;
-      const subject = getHeader(headers, "Subject");
-      const fromHeader = getHeader(headers, "From");
-      const body = extractPlainText(payload) || extractHtml(payload);
-
+    for await (const msg of fetchEmails({
+      user: imapUser,
+      appPassword: imapPassword,
+      newerThanDays: 60,
+      filter: isUpcomingCandidate,
+    })) {
+      result.fetched++;
+      const subject = msg.subject;
+      const fromHeader = msg.from;
+      const body = msg.plainText || msg.htmlText;
       const text = `${subject}\n${body}`.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ");
 
       const amount = findAmount(text);
@@ -193,13 +200,13 @@ export async function scanUpcomingFromGmail(userId: string): Promise<{
             category,
             source: UpcomingSource.EMAIL,
             status: UpcomingStatus.PENDING,
-            emailMessageId: id,
+            emailMessageId: msg.uid,
             confidence: 80,
             note: subject.slice(0, 140) || null,
           },
         });
         result.inserted++;
-        newMatches.push({ merchant, amount, dueDate, category, confidence: 80, messageId: id, subject, fromHeader });
+        newMatches.push({ merchant, amount, dueDate, category, confidence: 80, messageId: msg.uid, subject, fromHeader });
         void created;
       } catch (e) {
         if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
@@ -207,10 +214,14 @@ export async function scanUpcomingFromGmail(userId: string): Promise<{
           result.skipped++;
           continue;
         }
-        result.errors.push(`insert ${id}: ${(e as Error).message}`);
+        result.errors.push(`insert ${msg.uid}: ${(e as Error).message}`);
       }
-    } catch (e) {
-      result.errors.push(`msg ${id}: ${(e as Error).message}`);
+    }
+  } catch (e) {
+    if (e instanceof ImapAuthError) {
+      result.errors.push(`imap auth: ${e.message}`);
+    } else {
+      result.errors.push(`imap fetch: ${(e as Error).message}`);
     }
   }
 

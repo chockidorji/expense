@@ -17,14 +17,22 @@ export function detectBankAndParse(input: { subject: string; plainText: string; 
   return null;
 }
 
+// Single source of truth for which sender addresses we treat as bank-alert
+// emails. Used by:
+//  - allBankSenderQuery() — old googleapis path (Gmail search query syntax)
+//  - allBankSenderAddresses() — IMAP path (substring match against From header)
+const BANK_SENDERS: Record<string, string[]> = {
+  HDFC: ["alerts@hdfcbank.bank.in", "alerts@hdfcbank.net", "emailstatements.hdfcbank@hdfcbank.net"],
+  SBI: ["onlinesbi@sbi.co.in", "donotreply.sbiatm@alerts.sbi.co.in", "creditcards@sbicard.com"],
+  ICICI: ["alerts@icicibank.com", "credit_cards@icicibank.com"],
+  AXIS: ["alerts@axisbank.com", "cc.alerts@axisbank.com"],
+  KOTAK: ["kmbl.alerts@kotak.com", "creditcardalerts@kotak.com"],
+};
+
+export function allBankSenderAddresses(): string[] {
+  return Object.values(BANK_SENDERS).flat();
+}
+
 export function allBankSenderQuery(newerThanDays = 1): string {
-  const senders: Record<string, string[]> = {
-    HDFC: ["alerts@hdfcbank.bank.in", "alerts@hdfcbank.net", "emailstatements.hdfcbank@hdfcbank.net"],
-    SBI: ["onlinesbi@sbi.co.in", "donotreply.sbiatm@alerts.sbi.co.in", "creditcards@sbicard.com"],
-    ICICI: ["alerts@icicibank.com", "credit_cards@icicibank.com"],
-    AXIS: ["alerts@axisbank.com", "cc.alerts@axisbank.com"],
-    KOTAK: ["kmbl.alerts@kotak.com", "creditcardalerts@kotak.com"],
-  };
-  const all = Object.values(senders).flat();
-  return `from:(${all.join(" OR ")}) newer_than:${newerThanDays}d`;
+  return `from:(${allBankSenderAddresses().join(" OR ")}) newer_than:${newerThanDays}d`;
 }

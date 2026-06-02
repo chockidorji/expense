@@ -15,9 +15,8 @@ export default async function SettingsPage() {
   const userId = (session.user as any).id;
   const account = await prisma.account.findFirst({
     where: { userId, provider: "google" },
-    select: { needsReauth: true, scope: true },
+    select: { needsReauth: true },
   });
-  const missingGmailScope = !!account?.needsReauth && !!account?.scope && !account.scope.includes("gmail.readonly");
 
   return (
     <>
@@ -39,23 +38,12 @@ export default async function SettingsPage() {
             </div>
             {account?.needsReauth && (
               <div className="mx-4 mb-4 rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-3 py-2 text-xs leading-relaxed">
-                {missingGmailScope ? (
-                  <>
-                    <strong>Gmail permission missing.</strong> Tick the
-                    Gmail / &ldquo;Read all resources and their metadata&rdquo;
-                    box on Google&apos;s consent screen — it starts unchecked.{" "}
-                    <a className="underline font-medium" href="/api/auth/signin/google">
-                      Reconnect
-                    </a>
-                  </>
-                ) : (
-                  <>
-                    Gmail access expired.{" "}
-                    <a className="underline font-medium" href="/api/auth/signin/google">
-                      Reconnect
-                    </a>
-                  </>
-                )}
+                <strong>Gmail IMAP auth failed.</strong> Regenerate the app
+                password at{" "}
+                <a className="underline font-medium" href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">
+                  myaccount.google.com/apppasswords
+                </a>{" "}
+                and update <code>IMAP_APP_PASSWORD</code> in the server <code>.env</code>.
               </div>
             )}
           </Card>

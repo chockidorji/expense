@@ -8,8 +8,26 @@
 import cron from "node-cron";
 import { syncAllUsers } from "../lib/gmail-sync";
 import { sendDigestForAllUsers } from "../lib/upcoming-notify";
+import { sendTelegramMessage, mdv2Escape, isTelegramConfigured } from "../lib/telegram";
 
 console.log("[cron-worker] booting");
+
+// Sync-health alert state. The cron previously logged `users=0 inserted=0`
+// silently when auth broke; the user had no idea until they checked the
+// dashboard days later. Track consecutive failure ticks and push a Telegram
+// ping at the transition + a recovery ping when it comes back.
+let unhealthyTicks = 0;
+let alertedForCurrentOutage = false;
+const UNHEALTHY_THRESHOLD = 2; // ~10 minutes (2 × 5-min ticks)
+
+async function pingTelegramSafe(text: string, disableNotification: boolean): Promise<void> {
+  if (!isTelegramConfigured()) return;
+  try {
+    await sendTelegramMessage(text, { parseMode: "MarkdownV2", disableNotification });
+  } catch (e) {
+    console.error("[cron-worker] telegram alert failed:", e);
+  }
+}
 
 cron.schedule("*/5 * * * *", async () => {
   const start = Date.now();
@@ -20,6 +38,35 @@ cron.schedule("*/5 * * * *", async () => {
       { inserted: 0, duplicates: 0, errors: 0 },
     );
     console.log(`[cron-worker] gmail sync: users=${results.length} inserted=${totals.inserted} dup=${totals.duplicates} errors=${totals.errors} ms=${Date.now() - start}`);
+
+    // Health-state tracking. `users=0` means syncAllUsers couldn't find any
+    // user with a working Gmail credential — that's our silent-failure signal.
+    if (results.length === 0) {
+      unhealthyTicks++;
+      if (unhealthyTicks >= UNHEALTHY_THRESHOLD && !alertedForCurrentOutage) {
+        const reauthUrl = (process.env.NEXTAUTH_URL ?? "https://exp.chockidorji.com") + "/api/auth/signin/google";
+        await pingTelegramSafe(
+          [
+            "🚨 *Expense Tracker sync stopped*",
+            "",
+            `${mdv2Escape(`No users with working Gmail auth for ${unhealthyTicks * 5}+ minutes\\.`)}`,
+            "",
+            `[Reconnect now](${reauthUrl})`,
+          ].join("\n"),
+          /* disableNotification */ false,
+        );
+        alertedForCurrentOutage = true;
+      }
+    } else {
+      if (alertedForCurrentOutage) {
+        await pingTelegramSafe(
+          `✅ *Expense Tracker sync recovered* \\(${results[0]?.inserted ?? 0} inserted this tick\\)`,
+          /* disableNotification */ true,
+        );
+      }
+      unhealthyTicks = 0;
+      alertedForCurrentOutage = false;
+    }
   } catch (e) {
     console.error("[cron-worker] gmail sync failed:", e);
   }

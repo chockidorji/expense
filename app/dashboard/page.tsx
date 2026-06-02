@@ -43,12 +43,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
   const userId = (session.user as any).id;
   const account = await prisma.account.findFirst({
     where: { userId, provider: "google" },
-    select: { needsReauth: true, scope: true },
+    select: { needsReauth: true },
   });
-  // If needsReauth fired because gmail.readonly is missing from the granted
-  // scope set (vs. a normal token expiry), surface that explicitly so the
-  // user knows what to do differently on retry.
-  const missingGmailScope = !!account?.needsReauth && !!account?.scope && !account.scope.includes("gmail.readonly");
 
   const currentValue = currentMonthValue();
   const selectedValue = searchParams.month ?? currentValue;
@@ -115,26 +111,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
         </header>
         {account?.needsReauth && (
           <div className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-3 text-sm">
-            {missingGmailScope ? (
-              <>
-                <strong>Gmail permission missing.</strong> When you reconnect,
-                make sure the <em>Read all resources and their metadata</em>{" "}
-                (Gmail) checkbox is ticked on Google&apos;s consent screen — it
-                starts unchecked.{" "}
-                <a className="underline" href="/api/auth/signin/google">
-                  Reconnect
-                </a>
-                .
-              </>
-            ) : (
-              <>
-                Gmail access expired.{" "}
-                <a className="underline" href="/api/auth/signin/google">
-                  Reconnect
-                </a>
-                .
-              </>
-            )}
+            <strong>Gmail IMAP auth failed.</strong> Regenerate the app password
+            at{" "}
+            <a className="underline" href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">
+              myaccount.google.com/apppasswords
+            </a>{" "}
+            and update <code>IMAP_APP_PASSWORD</code> in the server <code>.env</code>.
           </div>
         )}
         <div className="flex items-center justify-center md:justify-between gap-3 flex-wrap">
